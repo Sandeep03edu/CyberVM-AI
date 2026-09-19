@@ -1,0 +1,45 @@
+# Local configuration
+.cyberai.env
+
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+*.token
+*.secret
+
+# Virtual machines
+*.vdi
+*.vmdk
+*.vhd
+*.qcow2
+*.sav
+*.nvram
+
+# VirtualBox
+*.log
+
+# Burp projects
+*.burp
+*.burpsuite
+
+# Local RAG database
+rag/database/*
+rag/backups/*
+
+# Local models
+models/*
+
+# Temporary files
+transfer/*
+artifacts/*
+
+# Python
+__pycache__/
+*.pyc
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
