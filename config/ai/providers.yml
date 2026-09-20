@@ -1,0 +1,12 @@
+# Endpoints ONLY. No API keys here (keys live in ~/.config/cyberai/secrets.env).
+local:
+  ollama:
+    base_url: "http://192.168.57.1:11434/v1"   # OpenAI-compatible
+cloud:
+  anthropic:  { env: "ANTHROPIC_API_KEY" }
+  openai:     { env: "OPENAI_API_KEY" }
+  deepseek:   { env: "DEEPSEEK_API_KEY",  base_url: "https://api.deepseek.com" }
+  openrouter: { env: "OPENROUTER_API_KEY", base_url: "https://openrouter.ai/api/v1" }
+rag:
+  base_url: "http://192.168.57.1:8088"
+  mcp_url:  "http://192.168.57.1:8088/mcp"

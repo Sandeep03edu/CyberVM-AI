@@ -1,0 +1,35 @@
+# ── CyberAI platform pins (single source of truth for versions/checksums) ──
+# Bump deliberately; every value here makes builds reproducible.
+
+kali:
+  release: "2026.2"
+  # Official prebuilt VirtualBox image (.7z contains .vbox + .vdi)
+  archive: "kali-linux-2026.2-virtualbox-amd64.7z"
+  url: "https://kali.download/base-images/kali-2026.2/kali-linux-2026.2-virtualbox-amd64.7z"
+  # VERIFIED 2026-09-20 against https://kali.download/base-images/kali-2026.2/SHA256SUMS
+  sha256: "41ed7ec51cdd3a5ca663ec09492261ba81acb26625fdda85ce7acb16909f3cee"
+
+virtualbox:
+  min_major: "7.1"
+  tested: "7.2.16"
+
+ollama:
+  version: "v0.34.2"          # verified latest 2026-09-20
+  url: "https://github.com/ollama/ollama/releases/download/v0.34.2/ollama-linux-amd64.tgz"
+  # sha256: fill from the release's ollama-linux-amd64.tgz .sha256 (host-setup checks if set)
+  sha256: ""
+
+vm_names:
+  base:   "CyberAI-Kali-Base"
+  golden: "CyberAI-Kali-Golden"
+  clone_prefix: "kali-"
+
+snapshots:
+  base:   "base-clean"
+  golden: "golden"           # actual tag becomes golden-<YYYY.MM.DD>
+
+resource_profiles:            # ram_mb / cpus
+  lite:     { ram_mb: 4096,  cpus: 4 }
+  standard: { ram_mb: 8192,  cpus: 6 }
+  heavy:    { ram_mb: 12288, cpus: 8 }
+default_profile: "standard"

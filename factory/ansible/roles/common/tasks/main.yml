@@ -1,0 +1,20 @@
+---
+- name: Update apt cache
+  apt: { update_cache: yes, cache_valid_time: 3600 }
+
+- name: Full upgrade
+  apt: { upgrade: dist }
+
+- name: Base utilities
+  apt:
+    name: [git, curl, wget, jq, tmux, ripgrep, python3, python3-pip, python3-venv, pipx, ca-certificates, gnupg]
+    state: present
+
+- name: Node.js (for AI client CLIs)
+  apt: { name: [nodejs, npm], state: present }
+
+- name: cyberai metadata dir
+  file: { path: /etc/cyberai, state: directory, mode: "0755" }
+
+- name: Timezone
+  timezone: { name: UTC }

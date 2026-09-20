@@ -1,0 +1,30 @@
+# CyberAI RAG stack — bound to the private AI-plane IP only.
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    restart: unless-stopped
+    ports:
+      - "${CYBERAI_HOST_IP}:6333:6333"
+    volumes:
+      - "${CYBERAI_RAG}/data:/qdrant/storage"
+
+  rag-api:
+    build: ./api
+    restart: unless-stopped
+    depends_on: [qdrant]
+    environment:
+      QDRANT_URL: "http://qdrant:6333"
+      OLLAMA_URL: "http://${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}"
+      EMBED_MODEL: "nomic-embed-text"
+    ports:
+      - "${CYBERAI_HOST_IP}:${CYBERAI_RAG_PORT}:8088"
+
+  # one-shot ingester (run via: cyberai rag update)
+  ingest:
+    build: ./ingest
+    profiles: ["tools"]
+    environment:
+      QDRANT_URL: "http://qdrant:6333"
+      OLLAMA_URL: "http://${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}"
+    volumes:
+      - "${CYBERAI_RAG}/sources:/sources:ro"

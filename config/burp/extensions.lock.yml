@@ -1,0 +1,20 @@
+# Burp extensions to auto-install (burp role). PIN + VERIFY everything:
+# third-party extensions run arbitrary code inside Burp.
+#
+# BApp .jar/.py files are fetched during a NAT build, sha256-checked, and dropped
+# into ~/.BurpSuite/bapps/, then registered in UserConfigCommunity.json.
+#
+# NOTE: fill url + sha256 before first golden build. Turbo Intruder is Python (needs Jython).
+jython:
+  url: "https://repo1.maven.org/maven2/org/python/jython-standalone/2.7.3/jython-standalone-2.7.3.jar"
+  sha256: ""                       # fill from Maven Central .sha1/.sha256
+  dest: "/opt/burp/jython-standalone-2.7.3.jar"
+extensions:
+  - name: "Turbo Intruder"
+    type: "python"                 # python | java
+    url: ""                        # BApp .py download URL (fill before build)
+    sha256: ""
+  # - name: "Logger++"
+  #   type: "java"
+  #   url: ""
+  #   sha256: ""

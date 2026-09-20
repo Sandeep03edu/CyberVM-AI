@@ -1,0 +1,20 @@
+---
+- name: Ensure config dirs for AI clients
+  become: false
+  file: { path: "{{ item }}", state: directory, mode: "0755" }
+  loop:
+    - "/home/{{ vm_user }}/.config/opencode"
+    - "/home/{{ vm_user }}/.config/cyberai"
+    - "/home/{{ vm_user }}/.codex"
+
+- name: OpenCode config (providers + RAG MCP)
+  become: false
+  template: { src: opencode.json.j2, dest: "/home/{{ vm_user }}/.config/opencode/opencode.json", mode: "0644" }
+
+- name: Codex MCP config
+  become: false
+  template: { src: codex-config.toml.j2, dest: "/home/{{ vm_user }}/.codex/config.toml", mode: "0644" }
+
+- name: Claude Code MCP config
+  become: false
+  template: { src: claude-mcp.json.j2, dest: "/home/{{ vm_user }}/.config/cyberai/claude-mcp.json", mode: "0644" }

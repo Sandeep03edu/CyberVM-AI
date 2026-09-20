@@ -1,45 +1,52 @@
-# Local configuration
+# ── Local configuration & secrets ───────────────────────────
 .cyberai.env
-
-# Secrets
 .env
 .env.*
 *.key
 *.pem
 *.token
 *.secret
+secrets.env
 
-# Virtual machines
+# ── Virtual machine disks & VirtualBox runtime ──────────────
 *.vdi
 *.vmdk
 *.vhd
 *.qcow2
 *.sav
 *.nvram
-
-# VirtualBox
+*.vbox
+*.vbox-prev
 *.log
 
-# Burp projects
+# ── Large binary artifacts ──────────────────────────────────
+*.7z
+*.ova
+*.ovf
+*.iso
+
+# ── Data directories (large / machine-local; NOT source) ────
+downloads/
+images/
+labs/
+models/
+rag/data/
+rag/backups/
+transfer/
+backups/
+artifacts/
+KaliImage/
+
+# ── Burp projects ───────────────────────────────────────────
 *.burp
 *.burpsuite
 
-# Local RAG database
-rag/database/*
-rag/backups/*
-
-# Local models
-models/*
-
-# Temporary files
-transfer/*
-artifacts/*
-
-# Python
+# ── Python ──────────────────────────────────────────────────
 __pycache__/
 *.pyc
+.venv/
 
-# OS/editor
+# ── OS / editor ─────────────────────────────────────────────
 .DS_Store
 .vscode/
 .idea/

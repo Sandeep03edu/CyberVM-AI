@@ -1,0 +1,11 @@
+# AI agent/client CLIs installed into the golden image (pinned).
+npm:
+  - name: "opencode-ai"                 # OpenCode CLI
+    bin: "opencode"
+    version: "latest"                   # pin to an exact version before release builds
+  - name: "@anthropic-ai/claude-code"
+    bin: "claude"
+    version: "latest"
+  - name: "@openai/codex"
+    bin: "codex"
+    version: "latest"

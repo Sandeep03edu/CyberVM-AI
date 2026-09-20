@@ -1,0 +1,63 @@
+# RAG sources with trust tiers (1=authoritative … 4=unverified) and layer.
+# layer: stable (slow-changing) | live (fast-changing) | personal
+sources:
+  # ── Tier 1, stable ──
+  - id: mitre_attack
+    tier: 1
+    layer: stable
+    kind: technique
+    url: "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
+  - id: cwe
+    tier: 1
+    layer: stable
+    kind: fundamental
+    url: "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip"
+  - id: owasp_wstg
+    tier: 1
+    layer: stable
+    kind: fundamental
+    git: "https://github.com/OWASP/wstg"
+  - id: owasp_cheatsheets
+    tier: 1
+    layer: stable
+    kind: fundamental
+    git: "https://github.com/OWASP/CheatSheetSeries"
+  # ── Tier 1, live ──
+  - id: nvd_cve
+    tier: 1
+    layer: live
+    kind: vulnerability
+    api: "https://services.nvd.nist.gov/rest/json/cves/2.0"
+  - id: cisa_kev
+    tier: 1
+    layer: live
+    kind: advisory
+    url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+  - id: github_advisories
+    tier: 1
+    layer: live
+    kind: advisory
+    api: "https://api.github.com/advisories"
+  # ── Tier 2, live ──
+  - id: epss
+    tier: 2
+    layer: live
+    kind: advisory
+    url: "https://epss.cyentia.com/epss_scores-current.csv.gz"
+  # ── Tier 3 ──
+  - id: nuclei_templates
+    tier: 3
+    layer: live
+    kind: exploit-poc
+    git: "https://github.com/projectdiscovery/nuclei-templates"
+  - id: payloadsallthethings
+    tier: 3
+    layer: stable
+    kind: technique
+    git: "https://github.com/swisskyrepo/PayloadsAllTheThings"
+  # ── Personal ──
+  - id: personal_notes
+    tier: 1
+    layer: personal
+    kind: personal
+    path: "/sources/personal"

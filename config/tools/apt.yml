@@ -1,0 +1,38 @@
+# Kali packages installed via apt in the golden image (security_tools role).
+# Metapackages give broad coverage; explicit list pins the tools ChatGPT requested.
+metapackages:
+  - kali-linux-default
+  - kali-tools-information-gathering
+  - kali-tools-vulnerability
+  - kali-tools-web
+  - kali-tools-database
+  - kali-tools-fuzzing
+packages:
+  - nmap
+  - ffuf
+  - gobuster
+  - nikto
+  - sqlmap
+  - wpscan
+  - metasploit-framework
+  - john
+  - hashcat
+  - wireshark
+  - tcpdump
+  - netcat-openbsd
+  - nuclei
+  - amass
+  - dnsutils
+  - seclists
+  - whatweb
+  - curl
+  - wget
+  - jq
+  - git
+  - ripgrep
+  - tmux
+  - python3
+  - python3-pip
+  - python3-venv
+  - pipx
+  - build-essential

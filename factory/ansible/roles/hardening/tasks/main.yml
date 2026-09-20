@@ -1,0 +1,23 @@
+---
+- name: Install ufw
+  apt: { name: ufw, state: present }
+
+- name: Default deny inbound, allow outbound
+  community.general.ufw: { direction: "{{ item.d }}", policy: "{{ item.p }}" }
+  loop:
+    - { d: incoming, p: deny }
+    - { d: outgoing, p: allow }
+  ignore_errors: true
+
+- name: Allow SSH only on the AI-plane subnet (provisioning)
+  community.general.ufw: { rule: allow, port: "22", proto: tcp, src: "192.168.57.0/24" }
+  ignore_errors: true
+
+- name: Enable ufw
+  community.general.ufw: { state: enabled }
+  ignore_errors: true
+
+- name: Disable services not needed in a lab VM
+  systemd: { name: "{{ item }}", enabled: no, state: stopped }
+  loop: [ cups, avahi-daemon, bluetooth ]
+  ignore_errors: true

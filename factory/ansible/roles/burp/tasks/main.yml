@@ -1,0 +1,38 @@
+---
+- name: Load Burp extension lock
+  set_fact:
+    burp: "{{ lookup('file', cyberai_config ~ '/burp/extensions.lock.yml') | from_yaml }}"
+
+- name: Install Burp Suite (Kali package)
+  apt: { name: burpsuite, state: present }
+
+- name: Ensure user Burp dirs
+  become: false
+  file: { path: "{{ item }}", state: directory, mode: "0755" }
+  loop:
+    - "/home/{{ vm_user }}/.BurpSuite"
+    - "/home/{{ vm_user }}/.BurpSuite/bapps"
+
+- name: Install Jython (needed for Python extensions like Turbo Intruder)
+  get_url:
+    url: "{{ burp.jython.url }}"
+    dest: "{{ burp.jython.dest }}"
+    checksum: "{{ ('sha256:' ~ burp.jython.sha256) if burp.jython.sha256 else omit }}"
+  when: burp.jython.url | default('') | length > 0
+
+- name: Download pinned BApp extensions (sha256-verified)
+  become: false
+  get_url:
+    url: "{{ item.url }}"
+    dest: "/home/{{ vm_user }}/.BurpSuite/bapps/{{ item.name | regex_replace('[^A-Za-z0-9]+','_') }}.{{ 'py' if item.type=='python' else 'jar' }}"
+    checksum: "sha256:{{ item.sha256 }}"
+  loop: "{{ burp.extensions | default([]) }}"
+  loop_control: { label: "{{ item.name }}" }
+  when: item.url | default('') | length > 0
+
+- name: Deploy Burp user config that auto-loads extensions
+  become: false
+  template:
+    src: UserConfigCommunity.json.j2
+    dest: "/home/{{ vm_user }}/.BurpSuite/UserConfigCommunity.json"
+    mode: "0644"

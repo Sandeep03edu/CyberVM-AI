@@ -1,0 +1,7 @@
+# Standalone release binaries downloaded + sha256-verified (security_tools role).
+binaries:
+  # - name: example
+  #   url: https://.../example-linux-amd64.tar.gz
+  #   sha256: "..."
+  #   extract: "example"          # path inside archive
+  #   dest: /usr/local/bin/example

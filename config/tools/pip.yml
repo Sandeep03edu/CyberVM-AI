@@ -1,0 +1,4 @@
+# Python tools (installed via pipx in the golden image so each is isolated).
+pipx:
+  - httpx            # note: 'httpx' pip pkg; the recon tool is 'httpx-toolkit' via apt/go
+  # - some-python-tool

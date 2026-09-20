@@ -1,0 +1,20 @@
+{
+  "user_options": {
+    "extender": {
+      "extensions": [
+{% set exts = burp.extensions | default([]) | selectattr('url','defined') | selectattr('url','ne','') | list %}
+{% for e in exts %}
+        {
+          "extension_type": "{{ e.type }}",
+          "name": "{{ e.name }}",
+          "errors": "ui",
+          "output": "ui",
+          "loaded": true,
+          "extension_file": "/home/{{ vm_user }}/.BurpSuite/bapps/{{ e.name | regex_replace('[^A-Za-z0-9]+','_') }}.{{ 'py' if e.type=='python' else 'jar' }}"
+        }{{ "," if not loop.last }}
+{% endfor %}
+      ],
+      "python": { "location_of_jython_standalone_jar_file": "{{ burp.jython.dest }}" }
+    }
+  }
+}

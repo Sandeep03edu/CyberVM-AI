@@ -1,0 +1,8 @@
+# Tools cloned/built from GitHub at pinned commits (security_tools role).
+# Each entry is verified by commit SHA (immutable) rather than a moving branch.
+repos:
+  # - name: example-tool
+  #   url: https://github.com/org/repo
+  #   commit: "abc123..."         # pin exact commit
+  #   build: "make"               # optional build step
+  #   bin_from: "repo/example"    # optional: symlink into /usr/local/bin
