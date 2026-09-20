@@ -10,6 +10,7 @@ host_setup() {
   _host_ufw
   _host_secrets_stub
   _host_models
+  touch "$CYBERAI_HOME/.cyberai.host-ready"
   ok "host-setup complete. Run: ./cyberai doctor"
 }
 
@@ -77,16 +78,25 @@ _host_ollama() {
   else
     log "Installing Ollama ${ver} (pinned tarball, sha256-checked if set)…"
     local tmp; tmp="$(mktemp -d)"
-    wget -qO "$tmp/ollama.tgz" "$url"
-    local want; want="$(platform .ollama.sha256)"
-    if [ -n "$want" ] && [ "$want" != "null" ]; then
-      echo "$want  $tmp/ollama.tgz" | sha256sum -c - || die "Ollama tarball checksum mismatch!"
+    local got=0
+    if wget -q --tries=3 --timeout=60 -O "$tmp/ollama.tgz" "$url"; then
+      local want; want="$(platform .ollama.sha256)"
+      if [ -n "$want" ] && [ "$want" != "null" ] && \
+         ! { echo "$want  $tmp/ollama.tgz" | sha256sum -c - >/dev/null; }; then
+        warn "Ollama checksum mismatch — skipping install (set .ollama.sha256 correctly and re-run)."
+        got=1
+      fi
     else
-      warn "config/platform.yml ollama.sha256 empty — skipping checksum (set it for reproducible builds)."
+      warn "Ollama download failed after retries — skipping (re-run host-setup to retry)."
+      got=1
     fi
-    sudo tar -C /usr -xzf "$tmp/ollama.tgz"
+    if [ "$got" = 0 ] && [ -s "$tmp/ollama.tgz" ]; then
+      sudo tar -C /usr -xzf "$tmp/ollama.tgz"
+      id ollama >/dev/null 2>&1 || sudo useradd -r -s /bin/false -U -m -d /usr/share/ollama ollama
+    else
+      warn "Ollama not installed this run — the rest of host-setup continues."
+    fi
     rm -rf "$tmp"
-    id ollama >/dev/null 2>&1 || sudo useradd -r -s /bin/false -U -m -d /usr/share/ollama ollama
   fi
   # systemd unit + override binding to the private host-only IP
   sudo tee /etc/systemd/system/ollama.service >/dev/null <<UNIT

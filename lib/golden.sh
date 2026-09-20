@@ -7,10 +7,19 @@ golden_dispatch() { local sub="${1:-}"; shift || true
     *) die "usage: cyberai golden build|verify" ;;
   esac; }
 
-_golden_ip() { # boot golden on NAT+AI plane, return its provisioning IP (NIC2)
-  local vm="$1"
-  vm_running "$vm" || VBoxManage startvm "$vm" --type headless
-  vm_wait_ip "$vm" 1 180
+_golden_ip() { # boot golden, return an IP that actually accepts SSH (provisioning ready)
+  local vm="$1" ip=""
+  vm_running "$vm" || VBoxManage startvm "$vm" --type headless >/dev/null 2>&1
+  # Re-poll the guest property each pass: it may hold a STALE IP from the previous
+  # boot until guest additions republish on the current network.
+  for _ in $(seq 1 90); do
+    ip=$(vm_wait_ip "$vm" 1 2) || { sleep 2; continue; }
+    ssh -i "$CYBERAI_SSH_KEY" -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=3 \
+        -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
+        "${CYBERAI_VM_USER}@$ip" true >/dev/null 2>&1 && { echo "$ip"; return 0; }
+    sleep 2
+  done
+  return 1
 }
 
 _write_inventory() { # <ip>
@@ -41,11 +50,14 @@ golden_build() {
   local inv; inv=$(_write_inventory "$ip")
 
   log "Running Ansible provisioning playbook…"
-  ( cd "$CYBERAI_HOME/factory/ansible" && ansible-playbook -i "$inv" playbooks/golden.yml )
+  ( cd "$CYBERAI_HOME/factory/ansible" && \
+    ansible-galaxy collection install -r requirements.yml >/dev/null && \
+    ansible-playbook -i "$inv" playbooks/golden.yml )
 
   log "Cleaning apt caches + shutting down…"
-  ssh -i "$CYBERAI_SSH_KEY" -o StrictHostKeyChecking=no "${CYBERAI_VM_USER}@$ip" \
-    "sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*" || true
+  ssh -i "$CYBERAI_SSH_KEY" -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=10 \
+      -o ServerAliveInterval=5 -o ServerAliveCountMax=3 "${CYBERAI_VM_USER}@$ip" \
+      "sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*" || true
   VBoxManage controlvm "$golden" acpipowerbutton; sleep 8
   for _ in $(seq 1 30); do vm_running "$golden" || break; sleep 2; done
 
@@ -68,7 +80,8 @@ golden_verify() {
   log "Ansible check-mode (expect: no changes)…"
   ( cd "$CYBERAI_HOME/factory/ansible" && ansible-playbook -i "$inv" playbooks/golden.yml --check ) || warn "check-mode reported changes."
   log "SSH smoke tests…"
-  ssh -i "$CYBERAI_SSH_KEY" -o StrictHostKeyChecking=no "${CYBERAI_VM_USER}@$ip" '
+  ssh -i "$CYBERAI_SSH_KEY" -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=10 \
+      "${CYBERAI_VM_USER}@$ip" '
     set -e
     nmap --version | head -1
     ls ~/.BurpSuite/bapps 2>/dev/null && echo "burp bapps present" || echo "no bapps yet"

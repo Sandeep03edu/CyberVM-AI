@@ -1,22 +1,22 @@
 ---
 - name: Load tool manifests from repo config
   set_fact:
-    apt_manifest: "{{ lookup('file', cyberai_config ~ '/tools/apt.yml') | from_yaml }}"
-    gh_manifest:  "{{ lookup('file', cyberai_config ~ '/tools/github.yml') | from_yaml }}"
-    bin_manifest: "{{ lookup('file', cyberai_config ~ '/tools/binaries.yml') | from_yaml }}"
-    pip_manifest: "{{ lookup('file', cyberai_config ~ '/tools/pip.yml') | from_yaml }}"
+    apt_manifest: "{{ (lookup('file', cyberai_config ~ '/tools/apt.yml') | from_yaml) | default({}, true) }}"
+    gh_manifest:  "{{ (lookup('file', cyberai_config ~ '/tools/github.yml') | from_yaml) | default({}, true) }}"
+    bin_manifest: "{{ (lookup('file', cyberai_config ~ '/tools/binaries.yml') | from_yaml) | default({}, true) }}"
+    pip_manifest: "{{ (lookup('file', cyberai_config ~ '/tools/pip.yml') | from_yaml) | default({}, true) }}"
 
 - name: Install Kali metapackages
   apt: { name: "{{ apt_manifest.metapackages | default([]) }}", state: present }
-  when: apt_manifest.metapackages | default([]) | length > 0
+  when: apt_manifest.metapackages | default([], true) | length > 0
 
 - name: Install explicit apt tools
   apt: { name: "{{ apt_manifest.packages | default([]) }}", state: present }
-  when: apt_manifest.packages | default([]) | length > 0
+  when: apt_manifest.packages | default([], true) | length > 0
 
 - name: Install pipx tools
   community.general.pipx: { name: "{{ item }}", state: install }
-  loop: "{{ pip_manifest.pipx | default([]) }}"
+  loop: "{{ pip_manifest.pipx | default([], true) }}"
 
 - name: Clone + build GitHub tools (pinned commits)
   block:
@@ -25,8 +25,8 @@
         repo: "{{ item.url }}"
         dest: "/opt/{{ item.name }}"
         version: "{{ item.commit }}"
-      loop: "{{ gh_manifest.repos | default([]) }}"
-  when: gh_manifest.repos | default([]) | length > 0
+      loop: "{{ gh_manifest.repos | default([], true) }}"
+  when: gh_manifest.repos | default([], true) | length > 0
 
 - name: Download + verify standalone binaries
   block:
@@ -35,5 +35,5 @@
         url: "{{ item.url }}"
         dest: "/tmp/{{ item.name }}.pkg"
         checksum: "sha256:{{ item.sha256 }}"
-      loop: "{{ bin_manifest.binaries | default([]) }}"
-  when: bin_manifest.binaries | default([]) | length > 0
+      loop: "{{ bin_manifest.binaries | default([], true) }}"
+  when: bin_manifest.binaries | default([], true) | length > 0

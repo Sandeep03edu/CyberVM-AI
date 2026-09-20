@@ -13,6 +13,9 @@
     - "/home/{{ vm_user }}/.BurpSuite"
     - "/home/{{ vm_user }}/.BurpSuite/bapps"
 
+- name: Ensure /opt/burp exists
+  file: { path: /opt/burp, state: directory, mode: "0755" }
+
 - name: Install Jython (needed for Python extensions like Turbo Intruder)
   get_url:
     url: "{{ burp.jython.url }}"

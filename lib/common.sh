@@ -54,5 +54,16 @@ confirm() { # confirm "<prompt>" — returns 0 only on typed 'yes'
 
 require_off() { vm_running "$1" && die "VM '$1' is running; stop it first (cyberai stop $1)"; return 0; }
 
+# ── host-setup readiness gate ────────────────────────────────
+# host-setup writes .cyberai.host-ready ONLY after every step (incl. the KVM/AI
+# network) has completed. Downstream commands must not run on a half-set host.
+host_setup_done() {
+  [ -f "$CYBERAI_HOME/.cyberai.host-ready" ] && [ -s "$CYBERAI_HOME/.cyberai.netif" ]
+}
+require_host_setup() {
+  host_setup_done && return 0
+  die "Host not fully configured yet. Run and FINISH: ./cyberai host-setup"
+}
+
 # host free RAM in MB
 host_free_mb() { awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo; }

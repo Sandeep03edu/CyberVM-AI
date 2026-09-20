@@ -1,0 +1,6 @@
+---
+# Ansible collections required to provision the golden image
+# (roles use community.general.{ufw,pipx,npm} which are NOT part of ansible-core).
+collections:
+  - name: community.general
+    version: ">=9.0.0"

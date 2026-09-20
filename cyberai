@@ -57,18 +57,25 @@ cmd="${1:-help}"; shift || true
 case "$cmd" in
   host-setup)  source "$CYBERAI_HOME/lib/host.sh";     host_setup "$@" ;;
   doctor)      source "$CYBERAI_HOME/lib/doctor.sh";   doctor "$@" ;;
-  base)        source "$CYBERAI_HOME/lib/base.sh";     base_dispatch "$@" ;;
-  golden)      source "$CYBERAI_HOME/lib/golden.sh";   golden_dispatch "$@" ;;
-  release)     source "$CYBERAI_HOME/lib/release.sh";  release_export "$@" ;;
-  import)      source "$CYBERAI_HOME/lib/release.sh";  release_import "$@" ;;
-  new|start|stop|snapshot|restore|destroy|list)
+  base|golden|release|import|new|start|net|ai|rag|transfer|secrets|backup)
+               require_host_setup
+               case "$cmd" in
+                 base)     source "$CYBERAI_HOME/lib/base.sh";      base_dispatch "$@" ;;
+                 golden)   source "$CYBERAI_HOME/lib/golden.sh";    golden_dispatch "$@" ;;
+                 release)  source "$CYBERAI_HOME/lib/release.sh";   release_export "$@" ;;
+                 import)   source "$CYBERAI_HOME/lib/release.sh";   release_import "$@" ;;
+                 new)      source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch new "$@" ;;
+                 start)    source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch start "$@" ;;
+                 net)      source "$CYBERAI_HOME/lib/net.sh";       net_set "$@" ;;
+                 ai)       source "$CYBERAI_HOME/lib/ai.sh";        ai_dispatch "$@" ;;
+                 rag)      source "$CYBERAI_HOME/lib/rag.sh";       rag_dispatch "$@" ;;
+                 transfer) source "$CYBERAI_HOME/lib/transfer.sh";  transfer_dispatch "$@" ;;
+                 secrets)  source "$CYBERAI_HOME/lib/secrets.sh";   secrets_dispatch "$@" ;;
+                 backup)   source "$CYBERAI_HOME/lib/release.sh";   backup_run "$@" ;;
+               esac
+               ;;
+  stop|snapshot|restore|destroy|list)
                source "$CYBERAI_HOME/lib/vm.sh";       vm_dispatch "$cmd" "$@" ;;
-  net)         source "$CYBERAI_HOME/lib/net.sh";      net_set "$@" ;;
-  ai)          source "$CYBERAI_HOME/lib/ai.sh";       ai_dispatch "$@" ;;
-  rag)         source "$CYBERAI_HOME/lib/rag.sh";      rag_dispatch "$@" ;;
-  transfer)    source "$CYBERAI_HOME/lib/transfer.sh"; transfer_dispatch "$@" ;;
-  secrets)     source "$CYBERAI_HOME/lib/secrets.sh";  secrets_dispatch "$@" ;;
-  backup)      source "$CYBERAI_HOME/lib/release.sh";  backup_run "$@" ;;
   help|-h|--help) usage ;;
   *) err "unknown command: $cmd"; usage; exit 2 ;;
 esac

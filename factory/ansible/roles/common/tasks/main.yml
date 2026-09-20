@@ -1,9 +1,13 @@
 ---
-- name: Update apt cache
-  apt: { update_cache: yes, cache_valid_time: 3600 }
+- name: Update apt cache (live output streams to console)
+  shell:
+    cmd: export DEBIAN_FRONTEND=noninteractive; apt-get update -o Acquire::Retries=3
+  when: not ansible_check_mode
 
-- name: Full upgrade
-  apt: { upgrade: dist }
+- name: Full upgrade (live output streams to console)
+  shell:
+    cmd: export DEBIAN_FRONTEND=noninteractive; apt-get -y -o Acquire::Retries=3 -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
+  when: not ansible_check_mode
 
 - name: Base utilities
   apt:
@@ -17,4 +21,4 @@
   file: { path: /etc/cyberai, state: directory, mode: "0755" }
 
 - name: Timezone
-  timezone: { name: UTC }
+  shell: timedatectl set-timezone UTC
