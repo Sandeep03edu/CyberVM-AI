@@ -6,6 +6,9 @@
 - name: Install Burp Suite (Kali package)
   apt: { name: burpsuite, state: present }
 
+- name: Ensure unzip (for BApp archive extensions)
+  apt: { name: unzip, state: present }
+
 - name: Ensure user Burp dirs
   become: false
   file: { path: "{{ item }}", state: directory, mode: "0755" }
@@ -23,7 +26,7 @@
     checksum: "{{ ('sha256:' ~ burp.jython.sha256) if burp.jython.sha256 else omit }}"
   when: burp.jython.url | default('') | length > 0
 
-- name: Download pinned BApp extensions (sha256-verified)
+- name: Download pinned BApp extensions - plain files (sha256-verified)
   become: false
   get_url:
     url: "{{ item.url }}"
@@ -31,7 +34,50 @@
     checksum: "sha256:{{ item.sha256 }}"
   loop: "{{ burp.extensions | default([]) }}"
   loop_control: { label: "{{ item.name }}" }
-  when: item.url | default('') | length > 0
+  when:
+    - item.url | default('') | length > 0
+    - not item.archive | default(false)
+    - not ansible_check_mode
+    - not ansible_check_mode
+
+- name: Download pinned BApp extensions - archives (sha256-verified)
+  become: false
+  get_url:
+    url: "{{ item.url }}"
+    dest: "/home/{{ vm_user }}/.BurpSuite/bapps/{{ item.name | regex_replace('[^A-Za-z0-9]+','_') }}.zip"
+    checksum: "sha256:{{ item.sha256 }}"
+  loop: "{{ burp.extensions | default([]) }}"
+  loop_control: { label: "{{ item.name }}" }
+  when:
+    - item.url | default('') | length > 0
+    - item.archive | default(false)
+    - not ansible_check_mode
+
+- name: Extract archived BApp extensions
+  become: false
+  unarchive:
+    src: "/home/{{ vm_user }}/.BurpSuite/bapps/{{ item.name | regex_replace('[^A-Za-z0-9]+','_') }}.zip"
+    dest: "/home/{{ vm_user }}/.BurpSuite/bapps"
+    remote_src: true
+    list_files: false
+  loop: "{{ burp.extensions | default([]) }}"
+  loop_control: { label: "{{ item.name }}" }
+  when:
+    - item.url | default('') | length > 0
+    - item.archive | default(false)
+    - not ansible_check_mode
+
+- name: Remove downloaded BApp archives after extraction
+  become: false
+  file:
+    path: "/home/{{ vm_user }}/.BurpSuite/bapps/{{ item.name | regex_replace('[^A-Za-z0-9]+','_') }}.zip"
+    state: absent
+  loop: "{{ burp.extensions | default([]) }}"
+  loop_control: { label: "{{ item.name }}" }
+  when:
+    - item.url | default('') | length > 0
+    - item.archive | default(false)
+    - not ansible_check_mode
 
 - name: Deploy Burp user config that auto-loads extensions
   become: false

@@ -10,7 +10,7 @@
           "errors": "ui",
           "output": "ui",
           "loaded": true,
-          "extension_file": "/home/{{ vm_user }}/.BurpSuite/bapps/{{ e.name | regex_replace('[^A-Za-z0-9]+','_') }}.{{ 'py' if e.type=='python' else 'jar' }}"
+          "extension_file": "/home/{{ vm_user }}/.BurpSuite/bapps/{{ e.entry_point | default((e.name | regex_replace('[^A-Za-z0-9]+','_')) ~ ('.py' if e.type=='python' else '.jar')) }}"
         }{{ "," if not loop.last }}
 {% endfor %}
       ],

@@ -22,7 +22,7 @@ ollama:
 vm_names:
   base:   "CyberAI-Kali-Base"
   golden: "CyberAI-Kali-Golden"
-  clone_prefix: "kali-"
+  clone_prefix: ""
 
 snapshots:
   base:   "base-clean"

@@ -19,7 +19,11 @@ net_apply() { # net_apply <vm> <mode>  (VM must be off)
 
 net_set() { # cyberai net <vm> <mode>
   local vm="${1:?vm}" mode="${2:?mode}"
-  vm_exists "$vm" || die "no such VM: $vm"
+  vm_exists "$vm" || {
+    local px; px="$(platform .vm_names.clone_prefix)"
+    vm="$px$vm"
+    vm_exists "$vm" || die "no such VM: $1"
+  }
   require_off "$vm"
   if [ "$mode" = bridged ]; then
     warn "BRIDGED puts '$vm' directly on your physical LAN (breaks the sandbox)."

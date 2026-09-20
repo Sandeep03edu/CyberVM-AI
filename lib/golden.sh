@@ -61,9 +61,10 @@ golden_build() {
   VBoxManage controlvm "$golden" acpipowerbutton; sleep 8
   for _ in $(seq 1 30); do vm_running "$golden" || break; sleep 2; done
 
-  snap="$(platform .snapshots.golden)-$(date +%Y.%m.%d)"
-  VBoxManage snapshot "$golden" take "$snap" --description "provisioned golden image"
-  echo "$snap" > "$CYBERAI_HOME/.cyberai.golden-snap"
+  snap="$(platform .snapshots.golden)-$(date +%Y.%m.%d-%H%M%S)"
+  snap_uuid="$(VBoxManage snapshot "$golden" take "$snap" --description "provisioned golden image" 2>&1 | sed -n 's/.*UUID: *\([0-9a-f-]\{36\}\).*/\1/p' | tail -1)"
+  [ -n "$snap_uuid" ] || snap_uuid="$snap"
+  echo "$snap_uuid" > "$CYBERAI_HOME/.cyberai.golden-snap"
   # host-side manifest
   cat > "$CYBERAI_IMAGES/golden/manifest.json" <<M
 { "snapshot": "$snap", "kali": "$(platform .kali.release)",
