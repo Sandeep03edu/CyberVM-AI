@@ -15,9 +15,10 @@ virtualbox:
 
 ollama:
   version: "v0.34.2"          # verified latest 2026-09-20
-  url: "https://github.com/ollama/ollama/releases/download/v0.34.2/ollama-linux-amd64.tgz"
-  # sha256: fill from the release's ollama-linux-amd64.tgz .sha256 (host-setup checks if set)
-  sha256: ""
+  url: "https://github.com/ollama/ollama/releases/download/v0.34.2/ollama-linux-amd64.tar.zst"
+  # sha256: Linux assets moved from .tgz -> .tar.zst; hash from the release's sha256sum.txt (host-setup verifies).
+  # Refresh automatically with: cyberai host ollama-pin
+  sha256: "e155b83589986d2c581fdbf1381ea3ebdb16549883679cd5a0627f7cdc05b12b"
 
 vm_names:
   base:   "CyberAI-Kali-Base"

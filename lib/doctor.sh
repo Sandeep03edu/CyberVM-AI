@@ -2,6 +2,9 @@
 
 doctor() {
   local pass=0 fail=0
+  # cyberai runs under `set -e`: a failing probe (e.g. curl to a down Ollama)
+  # would abort the table early. Evaluate every check explicitly instead.
+  local had_e=0; [[ $- == *e* ]] && had_e=1; set +e
   _row() { # _row <label> <ok?0/1> <detail>
     if [ "$2" -eq 0 ]; then printf '  %s[PASS]%s %-28s %s\n' "$GRN" "$RST" "$1" "$3"; pass=$((pass+1))
     else printf '  %s[FAIL]%s %-28s %s\n' "$RED" "$RST" "$1" "$3"; fail=$((fail+1)); fi
@@ -43,5 +46,7 @@ doctor() {
   else _row "Kali archive present" 1 "missing: $arc"; fi
 
   echo; log "Result: ${GRN}${pass} PASS${RST}, ${RED}${fail} FAIL${RST}"
-  [ "$fail" -eq 0 ]
+  [ "$fail" -eq 0 ]; local rc=$?
+  [[ $had_e == 1 ]] && set -e
+  return "$rc"
 }

@@ -16,6 +16,7 @@ cyberai — control CLI for the CyberAI Kali platform
 
 HOST SETUP
   host-setup                 Install/configure host (VirtualBox net, Ollama, deps, ufw)
+  host setup|ollama-pin      host-setup alias; refresh the pinned Ollama release from GitHub
   doctor                     Print a PASS/FAIL readiness table
 
 IMAGES
@@ -56,6 +57,7 @@ USAGE
 cmd="${1:-help}"; shift || true
 case "$cmd" in
   host-setup)  source "$CYBERAI_HOME/lib/host.sh";     host_setup "$@" ;;
+  host)        source "$CYBERAI_HOME/lib/host.sh";     host_cmd "$@" ;;
   doctor)      source "$CYBERAI_HOME/lib/doctor.sh";   doctor "$@" ;;
   base|golden|release|import|new|start|net|ai|rag|transfer|secrets|backup)
                require_host_setup

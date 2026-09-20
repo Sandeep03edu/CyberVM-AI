@@ -31,7 +31,7 @@ _host_preflight() {
 _host_apt() {
   log "Installing host dependencies via apt (sudo)…"
   sudo apt-get update -qq
-  local apt_pkgs=(jq p7zip-full sshpass ufw curl wget rsync python3-pip pipx)
+  local apt_pkgs=(jq p7zip-full sshpass ufw curl wget rsync python3-pip pipx zstd)
   # Docker engine: only request Ubuntu's docker.io when nothing is already installed.
   # Respects Docker CE (download.docker.com), docker.io, or any future provider.
   if have docker; then
@@ -76,27 +76,36 @@ _host_ollama() {
   if have ollama && ollama --version 2>/dev/null | grep -q "${ver#v}"; then
     ok "Ollama ${ver} already installed."
   else
-    log "Installing Ollama ${ver} (pinned tarball, sha256-checked if set)…"
-    local tmp; tmp="$(mktemp -d)"
-    local got=0
-    if wget -q --tries=3 --timeout=60 -O "$tmp/ollama.tgz" "$url"; then
-      local want; want="$(platform .ollama.sha256)"
-      if [ -n "$want" ] && [ "$want" != "null" ] && \
-         ! { echo "$want  $tmp/ollama.tgz" | sha256sum -c - >/dev/null; }; then
-        warn "Ollama checksum mismatch — skipping install (set .ollama.sha256 correctly and re-run)."
-        got=1
-      fi
-    else
-      warn "Ollama download failed after retries — skipping (re-run host-setup to retry)."
-      got=1
+    log "Installing Ollama ${ver} (pinned tarball, sha256-checked)…"
+
+    # Preflight: fail loudly NOW instead of a silent skip downstream.
+    local code
+    code=$(curl -sL --max-time 20 -o /dev/null -w '%{http_code}' -r 0-0 "$url" 2>/dev/null)
+    case "$code" in 2*) ;; *)
+      die "Ollama asset unreachable (HTTP $code) at:\n  $url\n=== The pinned release may have moved/been renamed. Auto-refresh it with:\n    ./cyberai host ollama-pin\n=== then re-run host-setup.";;
+    esac
+
+    # Cache in downloads/ (gitignored) with resume (-c) so retries/re-runs don't re-fetch 1.4 GB.
+    local dl
+    dl="${CYBERAI_DOWNLOADS}/ollama-${ver}.tar.zst"
+    case "$url" in *.tgz) dl="${CYBERAI_DOWNLOADS}/ollama-${ver}.tgz";; esac
+    mkdir -p "$(dirname "$dl")"
+    wget -c --tries=3 --timeout=120 --show-progress --progress=bar:force -O "$dl" "$url" \
+      || die "Ollama download failed (see progress above). Re-run host-setup to retry."
+
+    local want; want="$(platform .ollama.sha256)"
+    if [ -n "$want" ] && [ "$want" != "null" ] && \
+       ! { echo "$want  $dl" | sha256sum -c - >/dev/null; }; then
+      die "Ollama checksum mismatch — the lockfile is out of date. Run: ./cyberai host ollama-pin"
     fi
-    if [ "$got" = 0 ] && [ -s "$tmp/ollama.tgz" ]; then
-      sudo tar -C /usr -xzf "$tmp/ollama.tgz"
-      id ollama >/dev/null 2>&1 || sudo useradd -r -s /bin/false -U -m -d /usr/share/ollama ollama
-    else
-      warn "Ollama not installed this run — the rest of host-setup continues."
-    fi
-    rm -rf "$tmp"
+
+    # .zst: use --zstd WITHOUT -z (the two conflict); .tgz: plain gzip.
+    case "$url" in
+      *.zst) sudo tar --zstd -C /usr -xf "$dl" || die "Ollama extraction failed (zstd)." ;;
+      *)     sudo tar -C /usr -xzf "$dl"    || die "Ollama extraction failed." ;;
+    esac
+    id ollama >/dev/null 2>&1 || sudo useradd -r -s /bin/false -U -m -d /usr/share/ollama ollama
+    [ -x /usr/bin/ollama ] || die "ollama binary missing after extract (unexpected tarball layout)."
   fi
   # systemd unit + override binding to the private host-only IP
   sudo tee /etc/systemd/system/ollama.service >/dev/null <<UNIT
@@ -109,7 +118,7 @@ User=ollama
 Group=ollama
 Restart=always
 Environment="OLLAMA_HOST=${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}"
-Environment="OLLAMA_MODELS=${CYBERAI_MODELS}/ollama"
+Environment="OLLAMA_MODELS=/var/lib/ollama"
 Environment="OLLAMA_KEEP_ALIVE=5m"
 Environment="OLLAMA_MAX_LOADED_MODELS=1"
 Environment="OLLAMA_NUM_PARALLEL=1"
@@ -119,10 +128,9 @@ Environment="OLLAMA_KV_CACHE_TYPE=q8_0"
 [Install]
 WantedBy=multi-user.target
 UNIT
-  sudo mkdir -p "${CYBERAI_MODELS}/ollama"
-  sudo chown -R ollama:ollama "${CYBERAI_MODELS}/ollama" 2>/dev/null || true
-  # allow the 'ollama' user to traverse into the models dir (may be under $HOME)
-  sudo setfacl -m u:ollama:rx "$CYBERAI_ROOT" "$CYBERAI_MODELS" 2>/dev/null || true
+  # Model store lives OUTSIDE the user's home (/var/lib/ollama) so the
+  # 'ollama' service user can own it without traversing 700-perm home dirs.
+  sudo install -d -o ollama -g ollama /var/lib/ollama
   sudo systemctl daemon-reload
   sudo systemctl enable --now ollama >/dev/null 2>&1 || true
   ok "Ollama service bound to ${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}."
@@ -182,4 +190,32 @@ _host_models() {
     OLLAMA_HOST="${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}" ollama pull "$m" || warn "pull failed: $m"
   done < <(yq_get "$CYBERAI_HOME/config/ai/models.yml" '.chat[], .embedding[]')
   ok "Model pulls attempted."
+}
+
+host_ollama_pin() { # refresh the pinned Ollama release (version/url/sha256) from GitHub — no manual edits
+  command -v yq >/dev/null || die "yq not found — run './cyberai host-setup' once first."
+  local tag url sha
+  log "Querying GitHub for the latest stable Ollama release…"
+  tag=$(curl -fsSL --max-time 25 "https://api.github.com/repos/ollama/ollama/releases/latest" | jq -r .tag_name)
+  [ -n "$tag" ] || die "empty tag from GitHub API (no network? rate-limited?)."
+  url="https://github.com/ollama/ollama/releases/download/$tag/ollama-linux-amd64.tar.zst"
+  sha=$(curl -fsSL --max-time 25 "https://github.com/ollama/ollama/releases/download/$tag/sha256sum.txt" \
+        | awk '/ollama-linux-amd64\.tar\.zst$/{print $1; exit}')
+  [ -n "$sha" ] || die "no sha256 found for ollama-linux-amd64.tar.zst in release $tag."
+  if [ "$(platform .ollama.version)" = "$tag" ] && [ "$(platform .ollama.sha256)" = "$sha" ]; then
+    ok "Ollama pins current ($tag) — nothing to do."
+    return 0
+  fi
+  yq -i ".ollama.version=\"$tag\" | .ollama.url=\"$url\" | .ollama.sha256=\"$sha\"" \
+     "$CYBERAI_HOME/config/platform.yml"
+  ok "Updated config/platform.yml -> version=$tag, sha256=…${sha:0:12} (url point to $url)"
+  log "Re-run: ./cyberai host-setup   to install the refreshed release."
+}
+
+host_cmd() { # cyberai host setup|ollama-pin
+  case "${1:-setup}" in
+    setup)      shift || true; host_setup "$@" ;;
+    ollama-pin) shift || true; host_ollama_pin "$@" ;;
+    *) die "usage: cyberai host setup|ollama-pin" ;;
+  esac
 }
