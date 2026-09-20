@@ -48,9 +48,9 @@ _base_bootstrap_ssh() { local vm="$1"
   local ip; ip=$(vm_wait_ip "$vm" 1 180) || { warn "No NIC2 IP; is Guest Additions running? Enable SSH manually."; return 0; }
   local u="$CYBERAI_VM_USER" p="$CYBERAI_VM_PASS" pub; pub=$(cat "${CYBERAI_SSH_KEY}.pub")
   local gc="VBoxManage guestcontrol $vm --username $u --password $p"
-  $gc run --exe /bin/bash -- bash -c "echo '$p' | sudo -S systemctl enable --now ssh" || true
-  $gc run --exe /bin/bash -- bash -c "mkdir -p ~/.ssh && echo '$pub' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
-  $gc run --exe /bin/bash -- bash -c "echo '$p' | sudo -S bash -c 'echo \"$u ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/cyberai'"
+  $gc run --exe /bin/bash -- -c "echo '$p' | sudo -S systemctl enable --now ssh" || true
+  $gc run --exe /bin/bash -- -c "mkdir -p ~/.ssh && echo '$pub' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
+  $gc run --exe /bin/bash -- -c "echo '$p' | sudo -S bash -c 'echo \"$u ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/cyberai'"
   ok "SSH bootstrapped. Test: ssh -i $CYBERAI_SSH_KEY $u@$ip true"
   VBoxManage controlvm "$vm" acpipowerbutton 2>/dev/null || true
 }
