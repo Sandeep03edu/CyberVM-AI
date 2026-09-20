@@ -17,12 +17,29 @@ $ ./cyberai net work-01 offline            # default: no internet, AI+RAG reacha
 ```
 Modes: `offline` (default) · `airgap` (no net at all) · `nat` (internet) · `bridged` (asks for `yes`).
 
-## 4.3 File transfer (no permanent share)
+## 4.3 File transfer (SCP over the AI plane — no shared folders)
+`transfer` moves files host↔guest over SSH (no staging copy, no vboxsf, no `transfer/` pollution).
+The guest runs the shared SCP helper (`/usr/bin/scp` → openSSH); `/mnt` is a plain root-owned dir.
+
 ```
-$ ./cyberai transfer in work-01 ./payload.txt   # transient read-only vboxsf
-# in guest: sudo mount -t vboxsf -o ro cyberai_xfer /mnt ; cp /mnt/payload.txt ~ ; sudo umount /mnt
-$ ./cyberai transfer out work-01 /home/kali/loot.txt
+# host -> guest (default landing dir /mnt; optional 3rd arg = guest/dir):
+$ ./cyberai transfer in work-01 ./README.md
+  [ ok ] Copied ./README.md -> work-01:/mnt/README.md
+
+# guest -> host (defaults to your current dir; optional 3rd arg = host/dest):
+$ ./cyberai transfer out work-01 /mnt/abc.txt
+  [ ok ] Copied work-01:/mnt/abc.txt -> /home/sandeep03edu-ubuntu/Personal/CyberAIKaliVM/abc.txt
+
+$ ./cyberai transfer in  work-01 ./payload.txt            # -> /mnt/payload.txt
+$ ./cyberai transfer in  work-01 ./payload.txt /tmp       # -> /tmp/payload.txt
+$ ./cyberai transfer out work-01 /mnt/payload.txt          # -> ./payload.txt
+$ ./cyberai transfer out work-01 /mnt/payload.txt /root    # -> /root/payload.txt
 ```
+Notes:
+- `in` writes via `sudo install` (root-owned `/mnt`); the guest has passwordless sudo for provisioning.
+- `/mnt` is root-only — inside the guest use `sudo` to write there (e.g. `echo test | sudo tee /mnt/abc.txt`); the root-owned file is world-readable, so plain `kali` SCP can pull it back out.
+- Same-name overrides normal SCP semantics: `out` to your cwd overwrites a local file of that name.
+- Requires the VM to be running and Guest Additions to report its AI-plane IP.
 
 ## 4.4 Cloud keys (only when you want them)
 ```
