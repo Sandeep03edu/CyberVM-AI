@@ -30,7 +30,21 @@ _host_preflight() {
 _host_apt() {
   log "Installing host dependencies via apt (sudo)…"
   sudo apt-get update -qq
-  sudo apt-get install -y -qq jq p7zip-full sshpass ufw curl wget rsync python3-pip pipx docker.io docker-compose-v2 >/dev/null
+  local apt_pkgs=(jq p7zip-full sshpass ufw curl wget rsync python3-pip pipx)
+  # Docker engine: only request Ubuntu's docker.io when nothing is already installed.
+  # Respects Docker CE (download.docker.com), docker.io, or any future provider.
+  if have docker; then
+    ok "docker already present ($(docker --version 2>/dev/null | cut -d, -f1)) — skipping docker.io"
+  else
+    apt_pkgs+=(docker.io)            # clean machines get Docker via Ubuntu repo
+  fi
+  # Compose v2: present as the "docker compose" plugin (CE or Ubuntu) OR legacy v1.
+  if docker compose version >/dev/null 2>&1 || have docker-compose; then
+    ok "docker compose available — skipping docker-compose-v2"
+  else
+    apt_pkgs+=(docker-compose-v2)    # clean machines: v2 plugin from Ubuntu repo
+  fi
+  sudo apt-get install -y -qq "${apt_pkgs[@]}" >/dev/null
   # yq (mikefarah) — static binary if not present
   if ! have yq; then
     local yq_url="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64"
