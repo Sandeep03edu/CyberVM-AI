@@ -17,6 +17,11 @@
 - name: Node.js (for AI client CLIs)
   apt: { name: [nodejs, npm], state: present }
 
+- name: VirtualBox Guest Additions (vboxsf shared folders, guest agent, X11 driver)
+  apt:
+    name: [linux-headers-amd64, virtualbox-guest-utils, virtualbox-guest-x11]
+    state: present
+
 - name: cyberai metadata dir
   file: { path: /etc/cyberai, state: directory, mode: "0755" }
 
