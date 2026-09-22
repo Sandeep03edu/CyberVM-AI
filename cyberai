@@ -38,6 +38,8 @@ VM LIFECYCLE
 
 AI (host-native Ollama)
   ai pull|list|rm|bench      Manage/benchmark local models
+  ai run <prompt>            Send a prompt to a local model and stream the reply
+  ai tune|untune             Apply/revert coexistence tuning for host Ollama
 
 RAG (host docker service)
   rag up|down|status         Manage the RAG stack

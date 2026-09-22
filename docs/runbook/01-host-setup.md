@@ -22,7 +22,7 @@ This will (each step prints a line):
 5. **Host-only network** — creates the private `192.168.57.0/24` "AI plane" with DHCP.
 6. **ufw** — allows only Ollama (11434) + RAG (8088) from that subnet.
 7. **secrets file** — creates `~/.config/cyberai/secrets.env` (chmod 600).
-8. **models** — pulls `qwen3:8b` + `nomic-embed-text` (several GB; needs internet).
+8. **models** — pulls `qwen2.5:3b-instruct` + `nomic-embed-text` (several GB; needs internet).
 
 Expected tail: `[ ok ] host-setup complete. Run: ./cyberai doctor`
 

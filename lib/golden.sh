@@ -87,6 +87,7 @@ golden_verify() {
     nmap --version | head -1
     ls ~/.BurpSuite/bapps 2>/dev/null && echo "burp bapps present" || echo "no bapps yet"
     command -v opencode && opencode --version || echo "opencode missing"
+    /usr/local/bin/cyberai ai run "reply with exactly guest-ok" | grep -q guest-ok && echo "guest cyberai ai run OK" || echo "guest cyberai ai run FAILED"
     curl -fsm3 http://'"$CYBERAI_HOST_IP"':'"$CYBERAI_OLLAMA_PORT"'/api/tags >/dev/null && echo "ollama reachable from guest" || echo "ollama unreachable"
   '
   VBoxManage controlvm "$golden" acpipowerbutton 2>/dev/null || true

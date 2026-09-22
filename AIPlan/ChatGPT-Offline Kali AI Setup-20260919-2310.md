@@ -1308,13 +1308,13 @@ Your Ubuntu installation doesn't depend on Ollama.
 Inside Kali:
 
 ```bash
-ollama pull qwen3:8b
+ollama pull qwen2.5:3b-instruct
 ```
 
 Then:
 
 ```bash
-ollama run qwen3:8b
+ollama run qwen2.5:3b-instruct
 ```
 
 The current Ollama Qwen3 8B package is approximately **5.2 GB and Q4_K_M**, with tool-calling/thinking support. ([Ollama](https://ollama.com/library/qwen3%3A8b?utm_source=chatgpt.com))
@@ -2021,7 +2021,7 @@ And yes - **the final architecture will let you start a disposable Kali+AI envir
 
 **Sources:**
 
-- [qwen3:8b](https://ollama.com/library/qwen3%3A8b?utm_source=chatgpt.com)
+- [qwen2.5:3b-instruct](https://ollama.com/library/qwen3%3A8b?utm_source=chatgpt.com)
 - [Libvirt - Ubuntu Server documentation](https://ubuntu.com/server/docs/how-to/virtualisation/libvirt/?utm_source=chatgpt.com)
 - [Kali inside QEMU/LibVirt with virt-manager (Guest VM) | Kali Linux Documentation](https://www.kali.org/docs/virtualization/install-qemu-guest-vm/?utm_source=chatgpt.com)
 - [Home / Open WebUI](https://docs.openwebui.com/?utm_source=chatgpt.com)

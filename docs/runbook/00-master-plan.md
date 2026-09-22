@@ -53,7 +53,7 @@ UBUNTU HOST  ── ./cyberai host-setup (one script, any machine)
            NIC2 AI plane: host-only "cyberai" 192.168.57.0/24 → reaches Ollama+RAG only
 ```
 
-**RAM budget (32 GB):** desktop ~7 + Kali standard 8 + qwen3:8b ~6–7 (unloads after 5 min idle) + RAG ~1.5 ≈ 23 GB.
+**RAM budget (32 GB):** desktop ~7 + Kali standard 8 + qwen2.5:3b-instruct ~6–7 (unloads after 5 min idle) + RAG ~1.5 ≈ 23 GB.
 `cyberai start` refuses to boot if the host would drop below a 6 GB reserve. Profiles: `lite` 4 GB/4 vCPU, `standard` 8 GB/6 vCPU, `heavy` 12 GB/8 vCPU.
 
 **Network modes** (`cyberai net <vm> MODE`, VM powered off): `offline`(default, no internet, AI on) · `airgap`(no net at all) · `nat`(internet + AI) · `bridged`(explicit exposure, typed confirmation).
@@ -67,7 +67,7 @@ Cloud AI needs `nat` **and** `cyberai secrets push`. Keys live only in `~/.confi
 cyberai                     lib/*.sh                 .cyberai.env(.example)
 config/ platform.yml  tools/{apt,pip,github,binaries}.yml  burp/{extensions.lock.yml,user-options.json}
         ai/{models,clients,providers}.yml
-factory/ansible/ ansible.cfg playbooks/golden.yml roles/{common,hardening,security_tools,burp,ai_clients,rag_client}
+factory/ansible/ ansible.cfg playbooks/golden.yml roles/{common,hardening,security_tools,burp,ai_clients,ai_guest,rag_client}
 services/rag/ docker-compose.yml sources.yml api/ ingest/
 docs/runbook/ 00-master-plan.md 01…09-*.md recovery.md ssd-migration.md new-machine.md
 # gitignored: downloads/ images/{base,golden,releases}/ labs/ models/ rag/data/ transfer/ backups/ artifacts/
@@ -104,7 +104,7 @@ $ ./cyberai host-setup
 What it does, each step logged: preflight (VT-x, RAM, disk, KVM/VBox conflict) → apt install ansible-core(pipx), yq, jq,
 sshpass, ufw → install pinned **Ollama** tarball (sha256-checked, not `curl|sh`) with a systemd override binding
 `192.168.57.1:11434`, `OLLAMA_MODELS=$CYBERAI_ROOT/models/ollama`, keep-alive 5m, 1 model, ctx 8192, kv q8_0 →
-create host-only net `192.168.57.1/24` (DHCP .100–.199) → ufw rules → `ollama pull qwen3:8b nomic-embed-text` →
+create host-only net `192.168.57.1/24` (DHCP .100–.199) → ufw rules → `ollama pull qwen2.5:3b-instruct nomic-embed-text` →
 write `~/.config/cyberai/secrets.env` (mode 600).
 ```
 $ ./cyberai doctor      # PASS/FAIL table
@@ -133,19 +133,20 @@ host public key `~/.config/cyberai/id_ed25519.pub`, and grants passwordless sudo
 $ ./cyberai golden build
 ```
 Full-clones Base → CyberAI-Kali-Golden → boots `--net nat` → runs `ansible-playbook playbooks/golden.yml` (roles:
-common, hardening, security_tools, burp, ai_clients, rag_client) → cleans apt → shuts down → snapshots `golden-<date>`.
+common, hardening, security_tools, burp, ai_clients, ai_guest, rag_client) → cleans apt → shuts down → snapshots `golden-<date>`.
 - **security_tools** reads `config/tools/*.yml`: Kali metapackages (`kali-linux-default`, `kali-tools-web`,
   `-information-gathering`, `-vulnerability`, `-fuzzing`, `-database`) + nmap ffuf gobuster nikto sqlmap wpscan
   metasploit-framework john hashcat wireshark tcpdump nuclei httpx amass dnsutils seclists + pinned pip/github/binaries.
 - **burp** installs `burpsuite`, Jython jar, and pinned BApps (Turbo Intruder …) from `burp/extensions.lock.yml`
   (sha256-checked) into `~/.BurpSuite/bapps/`, then a templated `UserConfigCommunity.json` auto-loads them.
-- **ai_clients** installs pinned opencode, `@anthropic-ai/claude-code`, `@openai/codex`; **rag_client** writes their
+- **ai_clients** installs pinned opencode, `@anthropic-ai/claude-code`, `@openai/codex`; **ai_guest** installs a
+  guest `cyberai` CLI (`ai run|list|pull|rm|opencode`) that talks to host Ollama over the AI plane; **rag_client** writes their
   configs pointing at `192.168.57.1` (Ollama OpenAI-compat endpoint + MCP `cyberai-rag`).
 ```
 $ ./cyberai golden verify
 ```
 **Verify:** Ansible check-mode reports no changes; SSH smoke tests pass (`nmap --version`, burp jar present, extension
-hashes match, `opencode --version`, `curl 192.168.57.1:11434/api/tags`). ✅
+hashes match, `opencode --version`, `guest cyberai ai run OK`, `curl 192.168.57.1:11434/api/tags`). ✅
 
 ## Phase 4 — VM lifecycle, network, transfer, secrets (host) — ChatGPT "Milestone 1"
 ```
@@ -161,12 +162,19 @@ $ ./cyberai list
 in `offline`: `curl -m5 https://kali.org` fails, `curl 192.168.57.1:11434` works, `nc -zv 192.168.57.1 22` blocked;
 in `nat`: internet works, host 127.0.0.1 unreachable. ✅
 
-## Phase 5 — Local AI + benchmark (host)
+## Phase 5 — Local AI + benchmark (host) + guest `cyberai` CLI (inside clones)
 ```
 $ ./cyberai ai list
-$ ./cyberai ai bench qwen3:8b       # tokens/s, TTFT, RSS → docs/benchmarks/<date>.md
+$ ./cyberai ai bench qwen2.5:3b-instruct       # tokens/s, TTFT, RSS → docs/benchmarks/<date>.md
 ```
-**Verify:** from a clone in `offline` mode, `opencode` answers using qwen3:8b via `192.168.57.1:11434`. ✅
+In a clone the golden image ships `/usr/local/bin/cyberai` so the *same command shape* works in Kali:
+```
+kali$ source /etc/profile.d/cyberai.sh
+kali$ cyberai ai run "what does nmap -sV do?"       # streams from host Ollama, offline
+kali$ cyberai ai opencode "what does nmap -sV do?"  # opencode wrapper → --model ollama/qwen2.5:3b-instruct
+```
+**Verify:** from a clone in `offline` mode, `cyberai ai run` answers using qwen2.5:3b-instruct via `192.168.57.1:11434`,
+and `cyberai ai opencode` answers the same way through opencode. ✅
 
 ## Phase 6 — RAG service (host)
 ```
@@ -192,7 +200,7 @@ SSD later (`docs/runbook/ssd-migration.md`): stop VMs → backup → `VBoxManage
 **Verify:** OVA imports into a scratch `CYBERAI_ROOT` (simulated second machine) and boots. ✅
 
 ## Phase 8 — Offline acceptance test (host cable unplugged)
-Start a clone `--net offline` → OpenCode + qwen3:8b answers → RAG MCP query works → nmap a lab VM on the host-only net → destroy clone.
+Start a clone `--net offline` → `cyberai ai run` / `cyberai ai opencode` answer with qwen2.5:3b-instruct → RAG MCP query works → nmap a lab VM on the host-only net → destroy clone.
 **Verify:** everything works except cloud models and RAG `live` refresh. ✅
 
 ### Out of scope now (documented, not built): mcp-kali-server tool layer with approval; a DVWA/Juice-Shop lab VM; Packer wrapping golden build; Windows-host PowerShell port.
@@ -203,7 +211,7 @@ Start a clone `--net offline` → OpenCode + qwen3:8b answers → RAG MCP query 
 1. **Phase 0 files:** rewrite `.gitignore`; add `.cyberai.env.example`; create the directory skeleton; move the `.7z` to `downloads/kali/`; save this plan to `docs/runbook/`. (Deleting the stale 16 GB `KaliImage/CyberAI-Kali-Golden/` — I ask first.)
 2. **`cyberai` + `lib/*.sh`** — every subcommand above.
 3. **`config/*` manifests** with pinned versions (I look up the current Ollama release, confirm the Kali `.7z` SHA256, BApp UUIDs, and client versions at write time).
-4. **Ansible roles** (common, hardening, security_tools, burp, ai_clients, rag_client).
+4. **Ansible roles** (common, hardening, security_tools, burp, ai_clients, ai_guest, rag_client).
 5. **`services/rag`** (compose, FastAPI + MCP api, ingest modules, tiered sources.yml).
 6. **`docs/runbook/01–09`** — the per-phase beginner files, each command with expected output + Verify checkbox.
 7. **Static checks here** (no system changes): `bash -n`+`shellcheck` on scripts, `ansible-playbook --syntax-check`, `docker compose config`, `./cyberai doctor` dry-run. Then you run Phase 1 onward.

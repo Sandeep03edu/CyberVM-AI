@@ -72,6 +72,15 @@ cp .cyberai.env.example .cyberai.env     # edit CYBERAI_ROOT if you like
 ./cyberai start work-01 --net offline
 ```
 
+**Inside a Kali clone** (the golden image ships a guest `cyberai` CLI that talks to host Ollama
+over the AI plane — works offline):
+
+```bash
+kali$ source /etc/profile.d/cyberai.sh
+kali$ cyberai ai run "what does nmap -sV do?"        # stream a reply from the local model
+kali$ cyberai ai opencode "what does nmap -sV do?"   # same, through opencode (ollama/qwen2.5:3b-instruct)
+```
+
 ## Safety rules (baked into the tooling)
 
 - **Never work in Golden or Base** — `destroy` refuses them; you work only in clones.

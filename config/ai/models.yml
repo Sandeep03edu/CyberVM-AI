@@ -1,6 +1,6 @@
 # Models pulled onto the HOST Ollama by `cyberai ai pull`.
 chat:
-  - qwen3:8b            # primary; ~5.2 GB, Q4_K_M, tool-calling
+  - qwen2.5:3b-instruct # Lighweight LLM Model
   # - qwen3:14b         # optional, slower on CPU (~9 GB)
 embedding:
   - nomic-embed-text    # used by the RAG service for embeddings

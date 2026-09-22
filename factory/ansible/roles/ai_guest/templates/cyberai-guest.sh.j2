@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Guest cyberai CLI — talk to the HOST Ollama over the AI plane from inside a Kali clone.
+# Mirrors the host `./cyberai ai ...` subcommands that make sense in-VM:
+#   cyberai ai run [model:tag] <prompt>
+#   cyberai ai list
+#   cyberai ai pull <model>
+#   cyberai ai rm <model>
+#   cyberai ai opencode [model:tag] <task>
+#   cyberai opencode <task>
+# Host-only operations (golden build, bench, tune, RAG, transfer) stay on the host as ./cyberai.
+set -euo pipefail
+
+# Endpoint is baked in here by Ansible; OLLAMA_HOST (exported by /etc/profile.d/cyberai.sh
+# in login shells) overrides it when set.
+OLLAMA_BASE="http://${OLLAMA_HOST:-{{ host_ai_ip }}:{{ ollama_port }}}"
+DEFAULT_MODEL="${CYBERAI_AI_MODEL:-qwen2.5:3b-instruct}"
+
+say() { printf '\033[1;32m[*] %s\033[0m\n' "$*" >&2; }
+err() { printf '\033[1;31m[!] %s\033[0m\n' "$*" >&2; }
+die() { err "$*"; exit 1; }
+
+usage() {
+  cat <<EOF
+cyberai (guest) - talk to the host LLM from inside a Kali clone.
+
+  cyberai ai run [model:tag] <prompt>       Send a prompt to a local model and stream the reply
+  cyberai ai list                            List models available on the host Ollama
+  cyberai ai pull <model>                    Pull a model onto the host Ollama
+  cyberai ai rm <model>                      Delete a model from the host Ollama
+  cyberai ai opencode [model:tag] <task>     Run opencode against the local model (ollama/<model>)
+  cyberai opencode <task>                    Shortcut for \`cyberai ai opencode\`
+  cyberai help                               This message
+
+Default model: ${DEFAULT_MODEL} (override with CYBERAI_AI_MODEL).
+Orchestration (golden build, bench, tune, RAG, transfer) is host-only: run ./cyberai on the host.
+EOF
+}
+
+_reach() {
+  curl -fsm2 "$OLLAMA_BASE/api/tags" >/dev/null 2>&1 || die \
+    "host Ollama not reachable at $OLLAMA_BASE - is this VM on the AI plane (offline/nat) and is the host up? (run: cyberai doctor)"
+  command -v jq >/dev/null 2>&1 || die "jq is required but missing - rebuild golden (common role) and recreate this clone."
+}
+
+ai_run() {
+  local model="$DEFAULT_MODEL"
+  case "${1:-}" in
+    "" ) die "usage: cyberai ai run [model:tag] <prompt>" ;;
+    *[[:space:]]* ) ;;                 # has spaces -> it's the prompt, keep default model
+    *:* ) model="$1"; shift ;;         # bare model:tag -> use it as the model
+  esac
+  local prompt="$*"
+  [ -n "$prompt" ] || die "usage: cyberai ai run [model:tag] <prompt>"
+  _reach
+  curl -fsSN -m 120 "$OLLAMA_BASE/api/generate" \
+    -d "$(jq -nc --arg m "$model" --arg p "$prompt" \
+        '{model:$m,prompt:$p,stream:true,think:false,options:{temperature:0}}')" \
+  | while IFS= read -r line; do
+      printf '%s' "$(jq -rj '.response // empty' <<<"$line")"
+    done
+  echo
+}
+
+ai_list() {
+  _reach
+  curl -fsS "$OLLAMA_BASE/api/tags" | jq -r '.models[]?.name' \
+    || die "no models found on the host - run: cyberai ai pull <model>"
+}
+
+ai_pull() {
+  local model="${1:-}"
+  [ -n "$model" ] || die "usage: cyberai ai pull <model>"
+  _reach
+  curl -fsS -X POST "$OLLAMA_BASE/api/pull" -d "$(jq -nc --arg m "$model" '{model:$m,stream:false}')" \
+    | jq -r '.status // empty'
+}
+
+ai_rm() {
+  local model="${1:-}"
+  [ -n "$model" ] || die "usage: cyberai ai rm <model>"
+  _reach
+  curl -fsS -X DELETE "$OLLAMA_BASE/api/delete" -d "$(jq -nc --arg m "$model" '{model:$m}')" >/dev/null \
+    && say "deleted $model from host Ollama"
+}
+
+ai_opencode() {
+  local model="$DEFAULT_MODEL"
+  case "${1:-}" in
+    "" ) die "usage: cyberai ai opencode [model:tag] <task>" ;;
+    *[[:space:]]* ) ;;                 # has spaces -> it's the task, keep default model
+    *:* ) model="$1"; shift ;;         # bare model:tag -> use it as the model
+  esac
+  local task="$*"
+  [ -n "$task" ] || die "usage: cyberai ai opencode [model:tag] <task>"
+  command -v opencode >/dev/null 2>&1 || die \
+    "opencode is not installed - it ships in the golden image (ai_clients role); rebuild golden and create a fresh clone."
+  exec opencode run "$task" --model "ollama/$model"
+}
+
+ai_dispatch() {
+  local sub="${1:-help}"; shift || true
+  case "$sub" in
+    run)      ai_run "$@" ;;
+    list)     ai_list ;;
+    pull)     ai_pull "${1:-}" ;;
+    rm)       ai_rm "${1:-}" ;;
+    opencode) ai_opencode "$@" ;;
+    help|-h|--help) usage ;;
+    *) err "unknown ai command: $sub"; usage; exit 2 ;;
+  esac
+}
+
+main() {
+  local cmd="${1:-help}"; shift || true
+  case "$cmd" in
+    ai)       ai_dispatch "$@" ;;
+    opencode) ai_opencode "$@" ;;
+    help|-h|--help) usage ;;
+    *) err "unknown command: $cmd"; usage; exit 2 ;;
+  esac
+}
+
+main "$@"

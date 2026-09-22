@@ -3,14 +3,25 @@
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
-      "options": { "baseURL": "http://{{ host_ai_ip }}:{{ ollama_port }}/v1" },
-      "models": { "qwen3:8b": {} }
+      "options": {
+        "baseURL": "http://{{ host_ai_ip }}:{{ ollama_port }}/v1",
+        "timeout": false,
+        "headerTimeout": false,
+        "chunkTimeout": false
+      },
+      "models": {
+        "qwen2.5:3b-instruct": {
+          "options": { "think": false },
+          "limit": { "context": 8192, "output": 4096 }
+        }
+      }
     }
   },
   "mcp": {
     "cyberai-rag": {
       "type": "remote",
-      "url": "http://{{ host_ai_ip }}:{{ rag_port }}/mcp"
+      "url": "http://{{ host_ai_ip }}:{{ rag_port }}/mcp",
+      "enabled": false
     }
   }
 }

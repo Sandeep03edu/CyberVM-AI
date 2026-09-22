@@ -15,6 +15,7 @@
     - security_tools
     - burp
     - ai_clients
+    - ai_guest
     - rag_client
   post_tasks:
     - name: Write guest manifest
@@ -24,6 +25,6 @@
           {
             "provisioned": "{{ ansible_date_time.iso8601 }}",
             "kali": "{{ ansible_distribution_release | default('rolling') }}",
-            "roles": ["common","hardening","security_tools","burp","ai_clients","rag_client"]
+            "roles": ["common","hardening","security_tools","burp","ai_clients","ai_guest","rag_client"]
           }
         mode: "0644"

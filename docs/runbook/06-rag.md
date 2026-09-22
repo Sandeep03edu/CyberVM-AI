@@ -21,8 +21,10 @@ weighs authority + freshness instead of trusting any random source.
 
 ## 6.3 Query from a clone (MCP)
 The golden image already configured OpenCode/Codex/Claude with the `cyberai-rag` MCP server.
+Use the guest `cyberai` CLI's opencode wrapper (see `05-local-ai.md` §5.3) or opencode directly:
 ```
-kali$ opencode run "Which CVEs were added to CISA KEV recently? cite tier and date." 
+kali$ cyberai ai opencode "Which CVEs were added to CISA KEV recently? cite tier and date."
+kali$ opencode run "Which CVEs were added to CISA KEV recently? cite tier and date."
 ```
 Or hit REST directly:
 ```

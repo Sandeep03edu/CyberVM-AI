@@ -6,7 +6,8 @@
 ```
 $ ./cyberai new offline-demo && ./cyberai start offline-demo --net offline
 kali$ source /etc/profile.d/cyberai.sh
-kali$ opencode run "Explain this HTTP 500 with a SQL error and my next test"   # local model answers
+kali$ cyberai ai run "Explain this HTTP 500 with a SQL error and my next test"   # local model answers (guest cyberai CLI)
+kali$ cyberai ai opencode "Explain this HTTP 500 with a SQL error and my next test"  # or via opencode
 kali$ curl -s 192.168.57.1:8088/search -d '{"query":"sql injection","tier_max":2}' | jq '.results[0]'
 kali$ nmap -sV <a lab VM IP on 192.168.57.0/24>
 $ ./cyberai destroy offline-demo
