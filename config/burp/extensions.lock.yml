@@ -14,7 +14,7 @@ extensions:
   - name: "Turbo Intruder"
     type: "java"
     url: "https://portswigger.net/bappstore/bapps/download/9abaa233088242e8be252cd4ff534988/"
-    sha256: "119a7ad46397f1e90145d6ee47748068cb10afbca08f8ba5edc6e4195559d08b"
+    sha256: "0b845daa9ef71b6b6266da319bcd37a39e17de76bf2d8a4b2bd3274176ff08b6"
     archive: true
     entry_point: "turbo-intruder.jar"
   - name: "Logger++"
