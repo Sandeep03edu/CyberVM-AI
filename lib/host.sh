@@ -160,6 +160,10 @@ _host_ufw() {
   log "Configuring ufw for the AI plane (allow only Ollama + RAG from ${CYBERAI_NET_CIDR})…"
   sudo ufw allow from "$CYBERAI_NET_CIDR" to "$CYBERAI_HOST_IP" port "$CYBERAI_OLLAMA_PORT" proto tcp >/dev/null 2>&1 || true
   sudo ufw allow from "$CYBERAI_NET_CIDR" to "$CYBERAI_HOST_IP" port "$CYBERAI_RAG_PORT" proto tcp    >/dev/null 2>&1 || true
+  # Docker containers (rag-api, ingest) also call host Ollama for embeddings. They arrive
+  # from the private docker bridge range (172.16/12), not the AI plane — without this they
+  # are silently dropped by ufw's deny-incoming default and every rag action times out.
+  sudo ufw allow from 172.16.0.0/12 to "$CYBERAI_HOST_IP" port "$CYBERAI_OLLAMA_PORT" proto tcp >/dev/null 2>&1 || true
   sudo ufw --force enable >/dev/null 2>&1 || true
   ok "ufw rules applied (transfer port ${CYBERAI_TRANSFER_PORT} opened on demand)."
 }

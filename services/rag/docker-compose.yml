@@ -21,10 +21,13 @@ services:
 
   # one-shot ingester (run via: cyberai rag update)
   ingest:
-    build: ./ingest
+    build:
+      context: .
+      dockerfile: ingest/Dockerfile
     profiles: ["tools"]
     environment:
       QDRANT_URL: "http://qdrant:6333"
       OLLAMA_URL: "http://${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}"
     volumes:
       - "${CYBERAI_RAG}/sources:/sources:ro"
+      - "${CYBERAI_RAG}/state:/state"

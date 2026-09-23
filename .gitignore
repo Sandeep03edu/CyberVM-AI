@@ -51,6 +51,7 @@ images/
 labs/
 models/
 rag/data/
+rag/state/
 rag/backups/
 transfer/
 backups/

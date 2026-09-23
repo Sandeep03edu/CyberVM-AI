@@ -93,5 +93,7 @@ kali$ cyberai ai opencode "what does nmap -sV do?"   # same, through opencode (o
 
 Scaffold complete and statically validated (shell `bash -n`, YAML parse, `docker compose config`).
 Fill-in-before-first-run items are marked `TODO` in `config/burp/extensions.lock.yml`,
-`config/tools/{github,binaries}.yml`, `config/platform.yml` (ollama sha256), and NVD/git fetchers in
+`config/tools/{github,binaries}.yml`, and `config/platform.yml` (ollama sha256). All RAG ingest
+fetchers (NVD CVE 2.0, CISA KEV, GitHub Advisories, EPSS, MITRE ATT&CK, CWE, OWASP WSTG/CheatSheets,
+nuclei-templates, PayloadsAllTheThings) are implemented and validated in
 `services/rag/ingest/run.py`. See `docs/runbook/` for what to run and verify at each phase.
