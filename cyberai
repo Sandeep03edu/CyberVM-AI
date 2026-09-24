@@ -18,6 +18,8 @@ HOST SETUP
   host-setup                 Install/configure host (VirtualBox net, Ollama, deps, ufw)
   host setup|ollama-pin      host-setup alias; refresh the pinned Ollama release from GitHub
   doctor                     Print a PASS/FAIL readiness table
+  pins check                 Verify pinned downloads (Burp BApp serials) vs live store
+  pins refresh               Re-pin drifted Burp extensions (serial + sha256)
 
 IMAGES
   base import                Extract + register the verified Kali image as CyberAI-Kali-Base
@@ -61,6 +63,7 @@ case "$cmd" in
   host-setup)  source "$CYBERAI_HOME/lib/host.sh";     host_setup "$@" ;;
   host)        source "$CYBERAI_HOME/lib/host.sh";     host_cmd "$@" ;;
   doctor)      source "$CYBERAI_HOME/lib/doctor.sh";   doctor "$@" ;;
+  pins)        source "$CYBERAI_HOME/lib/pins.sh";     pins_dispatch "$@" ;;
   base|golden|release|import|new|start|net|ai|rag|transfer|secrets|backup)
                require_host_setup
                case "$cmd" in

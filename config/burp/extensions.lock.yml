@@ -4,6 +4,13 @@
 # BApp .jar/.py files are fetched during a NAT build, sha256-checked, and dropped
 # into ~/.BurpSuite/bapps/, then registered in UserConfigCommunity.json.
 #
+# Each BApp is pinned to a fixed version via its PortSwigger `serial` (the download
+# URL is .../bapps/download/<uuid>/<serial>). `sha256` is the integrity hash of the
+# bytes at that serial. Keep this lock current with:
+#   ./cyberai pins check     # detects serial drift vs the live store (no download)
+#   ./cyberai pins refresh   # re-pins any drifted serial + sha256
+# golden build/verify abort instantly if pins are stale.
+#
 # NOTE: url + sha256 are populated before golden build. Some BApps (Turbo Intruder)
 # ship as a zip archive containing the actual entry-point file.
 jython:
@@ -13,61 +20,71 @@ jython:
 extensions:
   - name: "Turbo Intruder"
     type: "java"
-    url: "https://portswigger.net/bappstore/bapps/download/9abaa233088242e8be252cd4ff534988/"
+    serial: 68
+    url: "https://portswigger.net/bappstore/bapps/download/9abaa233088242e8be252cd4ff534988/68"
     sha256: "0b845daa9ef71b6b6266da319bcd37a39e17de76bf2d8a4b2bd3274176ff08b6"
     archive: true
     entry_point: "turbo-intruder.jar"
   - name: "Logger++"
     type: "java"
-    url: "https://portswigger.net/bappstore/bapps/download/470b7057b86f41c396a97903377f3d81/"
+    serial: 22
+    url: "https://portswigger.net/bappstore/bapps/download/470b7057b86f41c396a97903377f3d81/22"
     sha256: "b214308cf194278ab54f5bc138ce59c9f8d1fa5705679814f3c814b204cc8fda"
     archive: true
     entry_point: "releases/LoggerPlusPlus.jar"
   - name: "Autorize"
     type: "python"
-    url: "https://portswigger.net/bappstore/bapps/download/f9bbac8c4acf4aefa4d7dc92a991af2f/"
+    serial: 36
+    url: "https://portswigger.net/bappstore/bapps/download/f9bbac8c4acf4aefa4d7dc92a991af2f/36"
     sha256: "7abb57dd45cec57cedb0ae92c97ee3756bc2af02efd39efed6f67a0387ccd75d"
     archive: true
     entry_point: "Autorize.py"
   - name: "Param Miner"
     type: "java"
-    url: "https://portswigger.net/bappstore/bapps/download/17d2949a985c4b7ca092728dba871943/"
+    serial: 39
+    url: "https://portswigger.net/bappstore/bapps/download/17d2949a985c4b7ca092728dba871943/39"
     sha256: "5986e85411e39d3361d2adde3f251202482f978965f627b431eb5b607d72597a"
     archive: true
     entry_point: "param-miner-all.jar"
   - name: "Auth Analyzer"
     type: "java"
-    url: "https://portswigger.net/bappstore/bapps/download/7db49799266c4f85866f54d9eab82c89/"
+    serial: 27
+    url: "https://portswigger.net/bappstore/bapps/download/7db49799266c4f85866f54d9eab82c89/27"
     sha256: "bb93f576607af0790a85a916698583302e4fb9bef9b9cfe4767d6f6c478e6e6a"
     archive: true
     entry_point: "target/AuthAnalyzer-1.1.14-jar-with-dependencies.jar"
   - name: "HTTP Request Smuggler"
     type: "java"
-    url: "https://portswigger.net/bappstore/bapps/download/aaaa60ef945341e8a450217a54a11646/"
+    serial: 52
+    url: "https://portswigger.net/bappstore/bapps/download/aaaa60ef945341e8a450217a54a11646/52"
     sha256: "01a3f7b99eae649df84e0823573cc15a93791b025545266c5a4f5f1b98464beb"
     archive: true
     entry_point: "desynchronize-all.jar"
   - name: "JSON Web Tokens"
     type: "java"
-    url: "https://portswigger.net/bappstore/bapps/download/f923cbf91698420890354c1d8958fee6/"
+    serial: 33
+    url: "https://portswigger.net/bappstore/bapps/download/f923cbf91698420890354c1d8958fee6/33"
     sha256: "089cfa7973047053be0a3d67f159da419213c1d3e7d2ae59e67f19feb5f80df0"
     archive: true
     entry_point: "build/libs/JWT4B_Montoya-1.0-SNAPSHOT.jar"
   - name: "InQL"
     type: "java"
-    url: "https://portswigger.net/bappstore/bapps/download/296e9a0730384be4b2fffef7b4e19b1f/"
+    serial: 27
+    url: "https://portswigger.net/bappstore/bapps/download/296e9a0730384be4b2fffef7b4e19b1f/27"
     sha256: "82ec4c29ff8e177afcc19ec7371539ae941afe7dac0433eea24e0070e2df508c"
     archive: true
     entry_point: "InQL.jar"
   - name: "Hackvertor"
     type: "java"
-    url: "https://portswigger.net/bappstore/bapps/download/65033cbd2c344fbabe57ac060b5dd100/"
+    serial: 67
+    url: "https://portswigger.net/bappstore/bapps/download/65033cbd2c344fbabe57ac060b5dd100/67"
     sha256: "9d48342e6959abb181a7cd89b711627ca76a7775c224eb44a82daffbd300e931"
     archive: true
     entry_point: "hackvertor-all.jar"
   - name: "Request Timer"
     type: "java"
-    url: "https://portswigger.net/bappstore/bapps/download/56675bcf2a804d3096465b2868ec1d65/"
+    serial: 2
+    url: "https://portswigger.net/bappstore/bapps/download/56675bcf2a804d3096465b2868ec1d65/2"
     sha256: "8cf01e5910fd52c06c763f84f2b1a98a099ca0ee3ab96a17ab01f541870b57f6"
     archive: true
     entry_point: "build/libs/request-timer-all.jar"

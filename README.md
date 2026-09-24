@@ -66,6 +66,8 @@ docs/runbook/        # step-by-step beginner guide (start at 00)
 cp .cyberai.env.example .cyberai.env     # edit CYBERAI_ROOT if you like
 ./cyberai host-setup                     # installs Ollama, network, ufw, deps
 ./cyberai doctor                         # must be all PASS
+./cyberai pins check                     # Burp BApp pins current (serials + sha256)
+./cyberai pins refresh                   # only if pins check reports DRIFT
 ./cyberai base import                    # register the verified Kali image
 ./cyberai golden build                   # Ansible-provision + snapshot
 ./cyberai new work-01                    # a disposable clone

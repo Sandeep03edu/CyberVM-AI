@@ -33,6 +33,10 @@ INV
 
 golden_build() {
   local base golden snap
+  source "$CYBERAI_HOME/lib/pins.sh"
+  if ! pins_dispatch check burp; then
+    die "Burp extension pins are stale. Fix with: ./cyberai pins refresh burp"
+  fi
   base="$(platform .vm_names.base)"; golden="$(platform .vm_names.golden)"
   vm_exists "$base" || die "Base image missing — run: cyberai base import"
   if vm_exists "$golden"; then warn "$golden exists; re-provisioning in place."; else
@@ -76,6 +80,10 @@ M
 golden_verify() {
   local golden ip; golden="$(platform .vm_names.golden)"
   vm_exists "$golden" || die "No golden VM."
+  source "$CYBERAI_HOME/lib/pins.sh"
+  if ! pins_dispatch check burp; then
+    die "Burp extension pins are stale. Fix with: ./cyberai pins refresh burp"
+  fi
   ip=$(_golden_ip "$golden") || die "No IP."
   local inv; inv=$(_write_inventory "$ip")
   log "Ansible check-mode (expect: no changes)…"

@@ -17,6 +17,13 @@ doctor() {
   have docker; _row "docker" $? "$(docker --version 2>/dev/null)"
   have yq; _row "yq" $? ""; have jq; _row "jq" $? ""
 
+  # pinned Burp extensions: lock serial must match the live store (no downloads)
+  if source "$CYBERAI_HOME/lib/pins.sh" && pins_dispatch check burp >/dev/null 2>&1; then
+    _row "Burp pins current" 0 "serial+sha256 match live store"
+  else
+    _row "Burp pins current" 1 "run: ./cyberai pins refresh burp"
+  fi
+
   # host-only interface with our IP
   VBoxManage list hostonlyifs | awk -v ip="$CYBERAI_HOST_IP" '/^IPAddress:/{if($2==ip)f=1} END{exit !f}'
   _row "host-only net $CYBERAI_HOST_IP" $? ""
