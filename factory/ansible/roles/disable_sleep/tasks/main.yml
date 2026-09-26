@@ -1,0 +1,81 @@
+---
+# disable_sleep — bake "never sleep / suspend / hibernate / blank-on-idle" into
+# the Kali golden. Clones are linked clones of the golden snapshot, so this runs
+# once during golden provisioning and every new VM inherits it.
+#
+# Two layers, because the two halves of "the VM went to sleep" live in different
+# places and only one of them can be written at provisioning time:
+#
+#   Layer 1 — durable, file-based, applied immediately (survives reboots):
+#     * mask the systemd sleep/suspend/hibernate targets
+#     * logind IdleAction=ignore
+#
+#   Layer 2 — session-scoped, applied by an XFCE autostart entry on every login:
+#     * xfce4-power-manager / xfce4-screensaver channels and X11 DPMS.
+#     These MUST be written inside the real desktop session, because
+#     xfce4-power-manager owns those channels there. Running xfconf-query under a
+#     throwaway dbus-run-session at provisioning time (no live display) reports
+#     "changed" but does not persist — so it is done at session start instead,
+#     where it is both effective and idempotent.
+
+- name: Mask runtime sleep/suspend targets so no guest component can ever sleep
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    masked: true
+  loop: [ sleep.target, suspend.target, hibernate.target, hybrid-sleep.target ]
+
+- name: logind — never take an idle power action
+  community.general.ini_file:
+    path: /etc/systemd/logind.conf
+    section: Login
+    option: IdleAction
+    value: ignore
+  notify: reload logind
+
+- name: Install the session-time idle-power script
+  ansible.builtin.copy:
+    dest: /usr/local/bin/cyberai-idle-power-off
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      # Runs from /etc/xdg/autostart on every XFCE session start.
+      # Idempotent: writes the same value on every login.
+      set -u
+      q() { command -v xfconf-query >/dev/null 2>&1 && xfconf-query -c "$1" -p "$2" -s "$3" 2>/dev/null; return 0; }
+
+      # power manager: never sleep on idle, never blank, never DPMS (AC + battery)
+      q xfce4-power-manager /xfce4-power-manager/inactivity-on-ac       0
+      q xfce4-power-manager /xfce4-power-manager/inactivity-on-battery  0
+      q xfce4-power-manager /xfce4-power-manager/inactivity-sleep-mode  0
+      q xfce4-power-manager /xfce4-power-manager/blank-on-ac            false
+      q xfce4-power-manager /xfce4-power-manager/blank-on-battery       false
+      q xfce4-power-manager /xfce4-power-manager/dpms-on-ac             false
+      q xfce4-power-manager /xfce4-power-manager/dpms-on-battery        false
+      q xfce4-power-manager /xfce4-power-manager/spin-down-on-battery  false
+      q xfce4-power-manager /xfce4-power-manager/ring-on-battery        false
+
+      # screensaver: off, and never locked
+      q xfce4-screensaver /screensaver/enabled       false
+      q xfce4-screensaver /screensaver/lock-enabled  false
+
+      # X11: the actual blank/DPMS control for this session
+      if command -v xset >/dev/null 2>&1; then xset s off 2>/dev/null; xset -dpms 2>/dev/null; fi
+      exit 0
+
+- name: Autostart the idle-power-off script in every XFCE session
+  ansible.builtin.copy:
+    dest: /etc/xdg/autostart/cyberai-idle-power-off.desktop
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=CyberAI idle power off
+      Comment=Lab image must never sleep, suspend, hibernate or blank on idle
+      Exec=/usr/local/bin/cyberai-idle-power-off
+      Terminal=false
+      NoDisplay=true
+      X-GNOME-Autostart-enabled=true

@@ -25,6 +25,21 @@ vm_names:
   golden: "CyberAI-Kali-Golden"
   clone_prefix: ""
 
+# Shared host-side VM features, applied automatically by every code path that
+# authors a VM's config (base import, golden build, clone) — see lib/common.sh
+# vm_apply_host_config. Never hardcode these flags in lib/*.sh.
+#
+# SECURITY: these are HYPERVISOR properties stored in the .vbox, not guest
+# settings. "bidirectional" opens a host<->guest data channel, so it deliberately
+# overrides the zero-trust sandbox posture in docs/runbook/00-master-plan.md.
+# To re-tighten, set both to "disabled" here and re-run the commands below.
+#
+# NOTE: VirtualBox copies these into a VM only at CLONE time. Changing them here
+# does not retroactively fix already-created clones — re-create them.
+vm_defaults:
+  clipboard_mode:   "bidirectional"   # disabled | hosttoguest | guesttohost | bidirectional
+  draganddrop_mode: "bidirectional"   # disabled | hosttoguest | guesttohost | bidirectional
+
 snapshots:
   base:   "base-clean"
   golden: "golden"           # actual tag becomes golden-<YYYY.MM.DD>

@@ -48,6 +48,10 @@ golden_build() {
   # Give golden internet for provisioning (NAT) + AI plane (NIC2)
   require_off "$golden"
   source "$CYBERAI_HOME/lib/net.sh"; net_apply "$golden" nat
+  # clipboard/DnD are host-side, clone-time-only settings. Converge them on EVERY
+  # build — including re-provisioning an existing golden — so the snapshot we are
+  # about to take has them baked in for every clone made from it.
+  vm_apply_host_config "$golden"
 
   local ip; ip=$(_golden_ip "$golden") || die "No IP from golden VM."
   ok "Golden reachable at $ip"

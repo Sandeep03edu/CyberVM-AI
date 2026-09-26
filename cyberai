@@ -37,6 +37,9 @@ VM LIFECYCLE
   restore <name> <tag>       Restore a snapshot
   destroy <name>             Power off + delete a clone (never Base/Golden)
   list                       List CyberAI VMs and state
+  clipboard/DnD              Declared in config/platform.yml (.vm_defaults) and applied
+                             automatically on base import, golden build and every clone.
+                             Read-only drift check: ./cyberai doctor
 
 AI (host-native Ollama)
   ai pull|list|rm|bench      Manage/benchmark local models

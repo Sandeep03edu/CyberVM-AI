@@ -52,6 +52,28 @@ doctor() {
     _row "Kali archive checksum" $? "$(basename "$arc")"
   else _row "Kali archive present" 1 "missing: $arc"; fi
 
+  # Shared host-side VM config (clipboard/DnD) vs config/platform.yml .vm_defaults.
+  # Read-only: never mutates a VM. This is the drift alarm for the clone-time-only
+  # VirtualBox settings that a golden rebuild or a clone re-creation resolves.
+  if _vm_defaults_ok; then
+    local anyvm=0 badvm=0 nvm badlist=""
+    while read -r nvm; do
+      [ -n "$nvm" ] || continue
+      case "$nvm" in CyberAI-Kali-*) ;; *) continue ;; esac
+      anyvm=1
+      if ! vm_host_config_drift "$nvm" >/dev/null 2>&1; then badvm=1; badlist="$badlist $nvm"; fi
+    done <<<"$(VBoxManage list vms 2>/dev/null | sed -n 's/^"\([^"]*\)".*/\1/p')"
+    if [ "$anyvm" -eq 0 ]; then
+      _row "VM clipboard/DnD" 1 "no CyberAI VMs registered"
+    elif [ "$badvm" -eq 0 ]; then
+      _row "VM clipboard/DnD" 0 "all VMs match config ($(vm_desired_clipboard)/$(vm_desired_draganddrop))"
+    else
+      _row "VM clipboard/DnD" 1 "drift on:$badlist -> ./cyberai golden build, then re-create clones"
+    fi
+  else
+    _row "VM clipboard/DnD" 1 ".vm_defaults missing in config/platform.yml"
+  fi
+
   echo; log "Result: ${GRN}${pass} PASS${RST}, ${RED}${fail} FAIL${RST}"
   [ "$fail" -eq 0 ]; local rc=$?
   [[ $had_e == 1 ]] && set -e

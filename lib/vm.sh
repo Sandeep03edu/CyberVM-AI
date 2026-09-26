@@ -31,6 +31,10 @@ vm_new() {
   VBoxManage clonevm "$golden" --snapshot "$snap" --options link --name "$vm" \
     --basefolder "$CYBERAI_LABS" --register
   VBoxManage modifyvm "$vm" --memory "$ram" --cpus "$cpus"
+  # clipboard/DnD are already baked into the golden snapshot, but a clone must
+  # never inherit a stale posture if golden's config drifted after its snapshot
+  # was taken. Apply before the 'clean' snapshot so it is recorded too.
+  vm_apply_host_config "$vm"
   source "$CYBERAI_HOME/lib/net.sh"; net_apply "$vm" offline
   VBoxManage snapshot "$vm" take clean --description "fresh clone"
   ok "Created $vm (default net: offline). Start: cyberai start $name --net offline"

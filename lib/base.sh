@@ -35,11 +35,12 @@ base_import() {
 _base_harden() { local vm="$1"
   log "Hardening base VM (sandbox defaults)…"
   VBoxManage modifyvm "$vm" \
-    --clipboard-mode disabled --draganddrop disabled \
     --audio-enabled off --usb-ohci off --usb-ehci off --usb-xhci off \
     --nic1 nat --nat-localhostreachable1 off \
     --nic2 hostonly --host-only-adapter2 "$(cat "$CYBERAI_HOME/.cyberai.netif" 2>/dev/null || echo vboxnet0)"
-  ok "Base hardened: no clipboard/DnD/audio/USB; NAT loopback off; NIC2 on AI plane."
+  # clipboard + DnD come from config/platform.yml (.vm_defaults) — never hardcoded
+  vm_apply_host_config "$vm"
+  ok "Base configured: clipboard/DnD per config; no audio/USB; NAT loopback off; NIC2 on AI plane."
 }
 
 _base_bootstrap_ssh() { local vm="$1"
