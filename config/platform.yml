@@ -44,8 +44,24 @@ snapshots:
   base:   "base-clean"
   golden: "golden"           # actual tag becomes golden-<YYYY.MM.DD>
 
-resource_profiles:            # ram_mb / cpus
-  lite:     { ram_mb: 4096,  cpus: 4 }
-  standard: { ram_mb: 8192,  cpus: 6 }
-  heavy:    { ram_mb: 12288, cpus: 8 }
-default_profile: "standard"
+# Per-clone CPU/memory. Applied ONLY at `cyberai new` time (and by
+# `cyberai resize`) — these are .vbox properties, so the golden image is never
+# modified and one golden serves every clone.
+#
+# RAM:vCPU is a uniform 1:2 ratio across all profiles, and it is also the rule
+# `cyberai new --ram <GB>` derives from when --cpus is omitted. Keeping the two
+# identical means `--ram 12` and `--profile balanced` agree; if they diverged,
+# the same request would silently produce two different machines.
+#
+# Sizing is bounded by the HOST, not the guest — see the RAM guard in lib/vm.sh
+# (CYBERAI_HOST_RESERVE_MB, .cyberai.env). With a 6144MB reserve the host's
+# usable budget is roughly (MemTotal - 6144), so:
+#   lean 8192x2  -> up to 3 concurrent    balanced 12288x2 -> 2 concurrent
+#   large 16384  -> 1 concurrent only
+# Ollama runs on the HOST (the VM reaches it over NIC2), so no guest RAM is ever
+# spent on local LLMs and these numbers can be raised freely.
+resource_profiles:
+  lean:     { ram_mb: 8192,  cpus: 4 }   # 2-3 concurrent, cloud agents only
+  balanced: { ram_mb: 12288, cpus: 6 }   # DEFAULT - 1 VM comfortably, 2 if light
+  large:    { ram_mb: 16384, cpus: 8 }   # 1 VM at a time
+default_profile: "balanced"

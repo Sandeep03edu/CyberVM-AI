@@ -53,8 +53,8 @@ UBUNTU HOST  ── ./cyberai host-setup (one script, any machine)
            NIC2 AI plane: host-only "cyberai" 192.168.57.0/24 → reaches Ollama+RAG only
 ```
 
-**RAM budget (32 GB):** desktop ~7 + Kali standard 8 + qwen2.5:3b-instruct ~6–7 (unloads after 5 min idle) + RAG ~1.5 ≈ 23 GB.
-`cyberai start` refuses to boot if the host would drop below a 6 GB reserve. Profiles: `lite` 4 GB/4 vCPU, `standard` 8 GB/6 vCPU, `heavy` 12 GB/8 vCPU.
+**RAM budget (32 GB):** desktop ~7 + Kali `balanced` 12 + qwen2.5:3b-instruct ~6–7 (unloads after 5 min idle) + RAG ~1.5 ≈ 27 GB — one Kali VM at a time, comfortably. Two at once needs `--ram 8` clones (`lean`).
+`cyberai start` refuses to boot if the host would drop below a 6 GB reserve. Profiles: `lean` 8 GB/4 vCPU, `balanced` 12 GB/6 vCPU (default), `large` 16 GB/8 vCPU. Override per clone with `--ram GB` / `--cpus N`, or change an existing clone with `./cyberai resize <name> --ram GB` (VM off) — neither modifies the golden image.
 
 **Network modes** (`cyberai net <vm> MODE`, VM powered off): `offline`(default, no internet, AI on) · `airgap`(no net at all) · `nat`(internet + AI) · `bridged`(explicit exposure, typed confirmation).
 Cloud AI needs `nat` **and** `cyberai secrets push`. Keys live only in `~/.config/cyberai/secrets.env` (chmod 600) and are copied into VM tmpfs at runtime — never into an image.

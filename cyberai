@@ -29,9 +29,15 @@ IMAGES
   import <file.ova>          Register an exported .ova on this machine
 
 VM LIFECYCLE
-  new <name> [--profile P]   Linked clone of the golden snapshot (P: lite|standard|heavy)
+  new <name> [--profile P | --ram GB] [--cpus N]
+                             Linked clone of the golden snapshot. Profiles (config/platform.yml):
+                             lean 8GB/4 - balanced 12GB/6 (default) - large 16GB/8. --ram takes 12,
+                             12G or 12288M; --cpus defaults to the same 1:2 ratio (12GB -> 6).
                              New clones are ALWAYS offline — no --net here. Give it a
                              network at start: start <name> --net nat|bridged|airgap
+  resize <name> [--ram GB] [--cpus N]
+                             Change RAM/vCPU on an existing clone (VM must be off). Sizing is a
+                             .vbox property, so the golden image is never modified.
   start <name> [--net MODE] [--headless]
   stop <name>                ACPI shutdown
   net <name> <MODE>          Set network mode (offline|airgap|nat|bridged); VM must be off
@@ -76,7 +82,7 @@ case "$cmd" in
   host)        source "$CYBERAI_HOME/lib/host.sh";     host_cmd "$@" ;;
   doctor)      source "$CYBERAI_HOME/lib/doctor.sh";   doctor "$@" ;;
   pins)        source "$CYBERAI_HOME/lib/pins.sh";     pins_dispatch "$@" ;;
-  base|golden|release|import|new|start|net|ai|rag|transfer|secrets|backup)
+  base|golden|release|import|new|resize|start|net|ai|rag|transfer|secrets|backup)
                require_host_setup
                case "$cmd" in
                  base)     source "$CYBERAI_HOME/lib/base.sh";      base_dispatch "$@" ;;
@@ -84,6 +90,7 @@ case "$cmd" in
                  release)  source "$CYBERAI_HOME/lib/release.sh";   release_export "$@" ;;
                  import)   source "$CYBERAI_HOME/lib/release.sh";   release_import "$@" ;;
                  new)      source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch new "$@" ;;
+                 resize)   source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch resize "$@" ;;
                  start)    source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch start "$@" ;;
                  net)      source "$CYBERAI_HOME/lib/net.sh";       net_set "$@" ;;
                  ai)       source "$CYBERAI_HOME/lib/ai.sh";        ai_dispatch "$@" ;;

@@ -41,6 +41,15 @@ doctor() {
 
   local free; free=$(host_free_mb); [ "$free" -ge "$CYBERAI_HOST_RESERVE_MB" ]
   _row "host free RAM" $? "${free}MB (reserve ${CYBERAI_HOST_RESERVE_MB}MB)"
+  # vm_start compares *free* RAM against a VM's *full* allocation, so a host can
+  # look roomy and still refuse a second VM. Report what the running clones have
+  # claimed, and whether another one would fit.
+  if have VBoxManage; then
+    source "$CYBERAI_HOME/lib/vm.sh"   # _clone_ram_allocated_mb / _cyberai_vms
+    local alloc nram; alloc=$(_clone_ram_allocated_mb); nram=$((free - alloc))
+    [ "$nram" -ge "$CYBERAI_HOST_RESERVE_MB" ]
+    _row "clone RAM headroom" $? "${alloc}MB claimed by running clones; ${nram}MB would be free for one more (need >= ${CYBERAI_HOST_RESERVE_MB}MB)"
+  fi
   local avail; avail=$(df -Pm "$CYBERAI_ROOT" 2>/dev/null | awk 'NR==2{print $4}')
   [ "${avail:-0}" -ge 60000 ]; _row "disk free @ root" $? "${avail}MB"
 

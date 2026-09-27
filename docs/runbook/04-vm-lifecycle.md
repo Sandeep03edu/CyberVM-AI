@@ -9,6 +9,47 @@ $ ./cyberai start work-01 --net offline    # add --headless to skip the GUI
 $ ./cyberai list
 ```
 
+### Sizing: RAM and vCPU
+
+Every clone starts at the `balanced` profile (12 GB / 6 vCPU). Pick a named
+profile, or set sizes explicitly — the two are mutually exclusive:
+
+```
+$ ./cyberai new work-01 --profile lean      #  8 GB / 4 vCPU
+$ ./cyberai new work-01 --profile balanced  # 12 GB / 6 vCPU  (default)
+$ ./cyberai new work-01 --profile large     # 16 GB / 8 vCPU
+$ ./cyberai new work-01 --ram 10 --cpus 5   # exact sizes
+$ ./cyberai new work-01 --ram 10            # vCPU derived, 10 GB -> 5
+```
+
+`--ram` accepts `12` (GB), `12G`/`12g` or `12288M` (MB) and rounds *down* to
+whole GB. Without `--cpus`, vCPU follows the same 1:2 rule the profiles use
+(8 GB → 4, 12 GB → 6, 16 GB → 8), so `--ram 12` is exactly `balanced`.
+`--profile` and `--ram`/`--cpus` cannot be combined. Profiles and the default
+live in `config/platform.yml` under `resource_profiles` / `default_profile`.
+
+Both sizes are checked against the host before the VM is created: RAM must be
+2 GB–host RAM, vCPU 1–`nproc`.
+
+### Changing size on an existing clone
+
+```
+$ ./cyberai stop work-01                     # required: the VM must be powered off
+$ ./cyberai resize work-01 --ram 16          # 16 GB, vCPU derived -> 8
+$ ./cyberai resize work-01 --cpus 4          # vCPU only; RAM is left alone
+$ ./cyberai resize work-01 --ram 6 --cpus 2  # both explicitly
+```
+
+`resize` requires at least one of `--ram`/`--cpus` and refuses `--profile` —
+it never silently re-reads a profile. Omitting one flag leaves that value at
+the VM's current setting. RAM and vCPU are properties of the VM's own
+`.vbox` file, so resizing a clone **never touches the golden image**; the
+golden stays 2 GB / 2 vCPU. Disk capacity is not affected by `resize`.
+
+`cyberai list` shows RAM and vCPU per VM, and `./cyberai doctor` reports how
+much RAM running clones have claimed, so you can see why a second VM would
+refuse to start.
+
 ## 4.2 Network modes (VM must be off to change)
 ```
 $ ./cyberai stop work-01
