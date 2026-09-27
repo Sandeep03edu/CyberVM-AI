@@ -27,7 +27,10 @@ Why it gives low-false-positive, in-the-wild intel: every chunk stores **tier (1
 weighs authority + freshness instead of trusting any random source.
 
 ## 6.3 Query from a clone (MCP)
-The golden image already configured OpenCode/Codex/Claude with the `cyberai-rag` MCP server.
+The golden image configures the `cyberai-rag` MCP server for **Codex** today. (OpenCode ships it
+disabled, and Claude is **not** wired up yet — Claude Code does not read
+`~/.config/cyberai/claude-mcp.json`. See the known-gap note in `06-rag-understanding.md` §6a.2.
+The Playwright MCP, by contrast, is registered with all three clients.)
 Use the guest `cyberai` CLI's opencode wrapper (see `05-local-ai.md` §5.3) or opencode directly:
 ```
 kali$ cyberai ai opencode "Which CVEs were added to CISA KEV recently? cite tier and date."

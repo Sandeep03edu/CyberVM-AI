@@ -16,7 +16,9 @@ Steps it performs automatically:
 1. Verifies the archive sha256 against `config/platform.yml` (STOPS if mismatch).
 2. `7z x` into `images/base/`.
 3. `VBoxManage registervm …/*.vbox` → renames to `CyberAI-Kali-Base`.
-4. Hardens it: clipboard/DnD off, audio/USB off, NAT loopback off, adds NIC2 on the AI plane.
+4. Hardens it: audio/USB off, NAT loopback off, adds NIC2 on the AI plane. Clipboard/DnD are set from
+   `config/platform.yml` `.vm_defaults` (currently `bidirectional`) and applied by
+   `lib/common.sh vm_apply_host_config`; `./cyberai doctor` reports read-only drift.
 5. Boots headless and, via Guest Additions, enables SSH + installs your key + passwordless sudo.
 6. Takes snapshot `base-clean`, then powers off.
 

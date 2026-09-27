@@ -1,0 +1,121 @@
+---
+# Bakes the MCP servers from config/mcp/servers.yml into the golden image and
+# wires them into claude / codex / opencode.
+#
+# This role is the SINGLE owner of all three client config files. rag_client only
+# creates the config directories. Two roles writing one file would mean the
+# second write silently clobbers the first.
+- name: Load MCP server manifest
+  set_fact:
+    mcp_servers: "{{ lookup('file', cyberai_config ~ '/mcp/servers.yml') | from_yaml }}"
+
+# Local (stdio) servers are the ones we install a package + browser for and
+# register as a `command` with each client. Remote servers (e.g. cyberai-rag)
+# carry no package and are configured entirely in the client templates.
+- name: Resolve local (stdio) MCP servers
+  set_fact:
+    mcp_local: "{{ mcp_servers.servers | default([]) | selectattr('transport', 'equalto', 'stdio') | list }}"
+
+- name: Read Node.js version
+  command: node --version
+  register: mcp_node_ver
+  changed_when: false
+  failed_when: false
+  # Read-only probe, so it must still run under `--check` (which `golden verify`
+  # uses). Ansible skips `command` in check mode, which would leave mcp_node_ver
+  # unregistered and make the assert below fail on an undefined value rather
+  # than on a real version problem. This is the counterpart to the
+  # `when: not ansible_check_mode` used by roles for *mutating* tasks.
+  check_mode: false
+
+# The common role installs unpinned distro nodejs, so assert rather than assume.
+# @playwright/mcp requires Node >= 18.
+- name: Require Node.js >= 18
+  assert:
+    that:
+      - mcp_node_ver.rc | default(1) == 0
+      - (mcp_node_ver.stdout | default('') | regex_replace('^v', '') | regex_search('^[0-9]+') | default(0) | int) >= 18
+    fail_msg: >-
+      Node.js >= 18 is required by @playwright/mcp but this image has
+      '{{ mcp_node_ver.stdout | default("node not found") }}'.
+      The common role installs nodejs from the Kali repo unpinned — install a
+      newer Node from nodesource.io in the common role, or pin it here.
+
+- name: Ensure MCP state dir
+  file: { path: /etc/cyberai, state: directory, mode: "0755" }
+
+# The installer is static shell; the manifest data lives in a separate plan file
+# so the same script works during golden build and inside a clone.
+- name: Install cyberai-mcp-install
+  template:
+    src: mcp-install.sh.j2
+    dest: /usr/local/bin/cyberai-mcp-install
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Render MCP install plan
+  template:
+    src: mcp-install.plan.j2
+    dest: /etc/cyberai/mcp-install.plan
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Bake MCP servers (npm package + browser + OS deps)
+  command: /usr/local/bin/cyberai-mcp-install bake
+  # `bake` is a no-op when the browsers marker already exists, so re-running this
+  # role on an existing golden does not re-download. Force it on the host with
+  # `./cyberai golden build --force`. Inside a live clone use `cyberai mcp update`.
+
+- name: Install MCP launcher wrappers
+  template:
+    src: mcp-wrapper.sh.j2
+    dest: "{{ s.command }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ mcp_local }}"
+  loop_control: { loop_var: s, label: "{{ s.name }}" }
+
+# ---------------------------------------------------------------- client wiring
+# NOTE: the cyberai-rag entries in these two templates were carried over verbatim
+# from rag_client so that moving ownership here changed nothing about RAG.
+
+- name: OpenCode config (providers + RAG MCP + local MCP servers)
+  become: false
+  template:
+    src: opencode.json.j2
+    dest: "/home/{{ vm_user }}/.config/opencode/opencode.json"
+    mode: "0644"
+
+- name: Codex MCP config
+  become: false
+  template:
+    src: codex-config.toml.j2
+    dest: "/home/{{ vm_user }}/.codex/config.toml"
+    mode: "0644"
+
+- name: Claude Code MCP config
+  become: false
+  template:
+    src: claude-mcp.json.j2
+    dest: "/home/{{ vm_user }}/.config/cyberai/claude-mcp.json"
+    mode: "0644"
+
+# Claude Code does NOT read ~/.config/cyberai/claude-mcp.json, and ~/.claude.json
+# holds onboarding state, caches and experiment flags that must never be
+# overwritten by a template. The only safe path is the CLI, at user scope.
+# remove-then-add makes re-running the role idempotent.
+- name: Register local MCP servers with Claude Code (user scope)
+  become: false
+  shell:
+    cmd: >-
+      claude mcp remove --scope user {{ s.name }} >/dev/null 2>&1 || true;
+      claude mcp add --scope user {{ s.name }} -- {{ s.command }} {{ (s.args | default([])) | join(' ') }}
+    executable: /bin/bash
+  environment:
+    HOME: "/home/{{ vm_user }}"
+  loop: "{{ mcp_local }}"
+  loop_control: { loop_var: s, label: "{{ s.name }}" }
+  changed_when: true

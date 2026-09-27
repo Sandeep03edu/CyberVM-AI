@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# {{ s.name }} — Playwright MCP launcher for CyberAI Kali clones.
+#
+# Headed by design: the browser window is ALWAYS visible so you can watch the
+# agent work. This script therefore requires a GUI session and FAILS LOUDLY
+# rather than silently falling back to headless — a silent fallback would hide
+# the fact that you are not seeing what the agent is doing.
+#
+# It exists so all three agent clients (claude / codex / opencode) share one
+# runtime contract. The manifest is config/mcp/servers.yml.
+set -eu
+
+BROWSERS="{{ s.browsers_path }}"
+
+# MUST match the value cyberai-mcp-install used at bake time. If these disagree
+# the browser is written to one path and read from another and Chromium fails
+# with "Executable doesn't exist".
+export PLAYWRIGHT_BROWSERS_PATH="$BROWSERS"
+
+# Playwright garbage-collects browser builds it believes are unused. On a baked
+# image that would delete the shared copy out from under every clone.
+export PLAYWRIGHT_SKIP_BROWSER_GC=1
+
+# Headed needs an X display. When the agent is launched without DISPLAY (e.g.
+# over plain SSH) fall back to the desktop session, if one is running.
+if [ -z "${DISPLAY:-}" ] && [ -S /tmp/.X11-unix/X0 ]; then
+  export DISPLAY=:0
+  if [ -z "${XAUTHORITY:-}" ] && [ -f "$HOME/.Xauthority" ]; then
+    export XAUTHORITY="$HOME/.Xauthority"
+  fi
+fi
+
+if [ -z "${DISPLAY:-}" ]; then
+  {
+    echo "{{ s.name }}: no X display available — this MCP is headed-only by design."
+    echo
+    echo "  Start the VM with a GUI session:   cyberai start <vm>     (NOT --headless)"
+    echo "  Over SSH, forward X or export DISPLAY and XAUTHORITY before"
+    echo "  launching the agent."
+    echo
+    echo "  The browser is NOT running headless as a fallback, because a silent"
+    echo "  fallback would mean you cannot see what the agent is doing."
+  } >&2
+  exit 1
+fi
+
+if [ ! -d "$BROWSERS" ]; then
+  echo "{{ s.name }}: $BROWSERS is missing - run: cyberai mcp update" >&2
+  exit 1
+fi
+
+if ! command -v {{ s.bin }} >/dev/null 2>&1; then
+  echo "{{ s.name }}: {{ s.bin }} is not on PATH - run: cyberai mcp update" >&2
+  exit 1
+fi
+
+# exec the globally installed pinned bin directly: no npx resolution, so startup
+# does not hit the network and cannot silently upgrade mid-session.
+exec {{ s.bin }} "$@"

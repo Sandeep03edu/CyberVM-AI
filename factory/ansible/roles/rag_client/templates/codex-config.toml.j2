@@ -1,9 +1,0 @@
-# Codex CLI — CyberAI
-model_provider = "ollama"
-
-[model_providers.ollama]
-name = "Ollama (host)"
-base_url = "http://{{ host_ai_ip }}:{{ ollama_port }}/v1"
-
-[mcp_servers.cyberai-rag]
-url = "http://{{ host_ai_ip }}:{{ rag_port }}/mcp"

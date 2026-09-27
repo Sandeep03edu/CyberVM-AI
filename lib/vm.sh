@@ -19,6 +19,12 @@ vm_new() {
   local name="${1:?usage: cyberai new <name> [--profile lite|standard|heavy]}"; shift || true
   local profile="$(platform .default_profile)"
   [ "${1:-}" = "--profile" ] && { profile="$2"; shift 2; }
+  # Fail loudly on an unrecognised flag. Silently ignoring one (as this used to)
+  # is how `cyberai new x --net nat` appeared to work while quietly producing an
+  # offline clone. There is no --net here by design: a new clone is always
+  # offline. To change it, use `cyberai start <name> --net <mode>` or
+  # `cyberai net <name> <mode>`.
+  [ $# -eq 0 ] || die "unknown option for 'cyberai new': $* (a new clone is always created offline; use 'cyberai start <name> --net <mode>')"
   local golden snap vm ram cpus
   golden="$(platform .vm_names.golden)"; vm="$(_clone_name "$name")"
   vm_exists "$vm" && die "$vm already exists."
@@ -46,7 +52,7 @@ vm_start() {
   vm_exists "$vm" || die "no such VM: $name"
   local mode="" type="gui"
   while [ $# -gt 0 ]; do case "$1" in
-    --net) mode="$2"; shift 2;; --headless) type="headless"; shift;; *) shift;; esac; done
+    --net) mode="$2"; shift 2;; --headless) type="headless"; shift;; *) die "unknown option for 'cyberai start': $1 (valid: --net offline|airgap|nat|bridged, --headless)";; esac; done
   # RAM guard
   local need free; need=$(VBoxManage showvminfo "$vm" --machinereadable | sed -n 's/^memory=//p')
   free=$(host_free_mb)

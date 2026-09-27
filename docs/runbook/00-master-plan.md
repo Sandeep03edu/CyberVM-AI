@@ -66,8 +66,8 @@ Cloud AI needs `nat` **and** `cyberai secrets push`. Keys live only in `~/.confi
 ```
 cyberai                     lib/*.sh                 .cyberai.env(.example)
 config/ platform.yml  tools/{apt,pip,github,binaries}.yml  burp/{extensions.lock.yml,user-options.json}
-        ai/{models,clients,providers}.yml
-factory/ansible/ ansible.cfg playbooks/golden.yml roles/{common,hardening,security_tools,burp,ai_clients,ai_guest,rag_client}
+        ai/{models,clients,providers}.yml  mcp/servers.yml
+factory/ansible/ ansible.cfg playbooks/golden.yml roles/{common,hardening,security_tools,burp,ai_clients,ai_guest,rag_client,disable_sleep,mcp_servers}
 services/rag/ docker-compose.yml sources.yml api/ ingest/
 docs/runbook/ 00-master-plan.md 01…09-*.md recovery.md ssd-migration.md new-machine.md
 # gitignored: downloads/ images/{base,golden,releases}/ labs/ models/ rag/data/ transfer/ backups/ artifacts/
@@ -120,7 +120,9 @@ Steps it runs (the "correct image process" for your file type):
 $ 7z x downloads/kali/kali-linux-2026.2-virtualbox-amd64.7z -o"$CYBERAI_ROOT/images/base/"
 $ VBoxManage registervm "$CYBERAI_ROOT/images/base/<name>.vbox"   # NOT 'import' — this is .vbox+.vdi
 $ VBoxManage modifyvm <name> --name CyberAI-Kali-Base
-# harden the shipped VM: no clipboard/DnD, no audio/USB, NAT localhost-reachable off, add NIC2 host-only "cyberai"
+# harden the shipped VM: no audio/USB, NAT localhost-reachable off, add NIC2 host-only "cyberai"
+# clipboard/DnD come from config/platform.yml .vm_defaults (bidirectional) and are applied by
+# lib/common.sh vm_apply_host_config on base import, golden build and every clone — not hardcoded here.
 $ VBoxManage snapshot CyberAI-Kali-Base take base-clean
 ```
 Then SSH is enabled headlessly via Guest Additions (no GUI needed):
@@ -133,15 +135,17 @@ host public key `~/.config/cyberai/id_ed25519.pub`, and grants passwordless sudo
 $ ./cyberai golden build
 ```
 Full-clones Base → CyberAI-Kali-Golden → boots `--net nat` → runs `ansible-playbook playbooks/golden.yml` (roles:
-common, hardening, security_tools, burp, ai_clients, ai_guest, rag_client) → cleans apt → shuts down → snapshots `golden-<date>`.
+common, hardening, security_tools, burp, ai_clients, ai_guest, rag_client, disable_sleep, mcp_servers) → cleans apt → shuts down → snapshots `golden-<date>`.
 - **security_tools** reads `config/tools/*.yml`: Kali metapackages (`kali-linux-default`, `kali-tools-web`,
   `-information-gathering`, `-vulnerability`, `-fuzzing`, `-database`) + nmap ffuf gobuster nikto sqlmap wpscan
   metasploit-framework john hashcat wireshark tcpdump nuclei httpx amass dnsutils seclists + pinned pip/github/binaries.
 - **burp** installs `burpsuite`, Jython jar, and pinned BApps (Turbo Intruder …) from `burp/extensions.lock.yml`
   (sha256-checked) into `~/.BurpSuite/bapps/`, then a templated `UserConfigCommunity.json` auto-loads them.
 - **ai_clients** installs pinned opencode, `@anthropic-ai/claude-code`, `@openai/codex`; **ai_guest** installs a
-  guest `cyberai` CLI (`ai run|list|pull|rm|opencode`) that talks to host Ollama over the AI plane; **rag_client** writes their
-  configs pointing at `192.168.57.1` (Ollama OpenAI-compat endpoint + MCP `cyberai-rag`).
+  guest `cyberai` CLI (`ai run|list|pull|rm|opencode`) that talks to host Ollama over the AI plane; **rag_client** creates
+  the client config dirs; **disable_sleep** keeps the VM awake; **mcp_servers** reads `config/mcp/servers.yml`, bakes the
+  Playwright MCP + Chromium into `/opt/ms-playwright`, and writes all three client configs pointing at `192.168.57.1`
+  (Ollama OpenAI-compat endpoint + MCP `cyberai-rag`).
 ```
 $ ./cyberai golden verify
 ```
@@ -211,7 +215,7 @@ Start a clone `--net offline` → `cyberai ai run` / `cyberai ai opencode` answe
 1. **Phase 0 files:** rewrite `.gitignore`; add `.cyberai.env.example`; create the directory skeleton; move the `.7z` to `downloads/kali/`; save this plan to `docs/runbook/`. (Deleting the stale 16 GB `KaliImage/CyberAI-Kali-Golden/` — I ask first.)
 2. **`cyberai` + `lib/*.sh`** — every subcommand above.
 3. **`config/*` manifests** with pinned versions (I look up the current Ollama release, confirm the Kali `.7z` SHA256, BApp UUIDs, and client versions at write time).
-4. **Ansible roles** (common, hardening, security_tools, burp, ai_clients, ai_guest, rag_client).
+4. **Ansible roles** (common, hardening, security_tools, burp, ai_clients, ai_guest, rag_client, disable_sleep, mcp_servers).
 5. **`services/rag`** (compose, FastAPI + MCP api, ingest modules, tiered sources.yml).
 6. **`docs/runbook/01–09`** — the per-phase beginner files, each command with expected output + Verify checkbox.
 7. **Static checks here** (no system changes): `bash -n`+`shellcheck` on scripts, `ansible-playbook --syntax-check`, `docker compose config`, `./cyberai doctor` dry-run. Then you run Phase 1 onward.

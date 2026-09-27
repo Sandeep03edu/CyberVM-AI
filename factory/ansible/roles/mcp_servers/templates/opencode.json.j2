@@ -22,6 +22,12 @@
       "type": "remote",
       "url": "http://{{ host_ai_ip }}:{{ rag_port }}/mcp",
       "enabled": false
-    }
+    }{% for s in mcp_local %},
+    "{{ s.name }}": {
+      "type": "local",
+      "command": {{ ([s.command] + (s.args | default([]))) | to_json }},
+      "enabled": true,
+      "timeout": 60000
+    }{% endfor %}
   }
 }

@@ -18,6 +18,7 @@
     - ai_guest
     - rag_client
     - disable_sleep
+    - mcp_servers
   post_tasks:
     - name: Write guest manifest
       copy:
@@ -26,6 +27,6 @@
           {
             "provisioned": "{{ ansible_date_time.iso8601 }}",
             "kali": "{{ ansible_distribution_release | default('rolling') }}",
-              "roles": ["common","hardening","security_tools","burp","ai_clients","ai_guest","rag_client","disable_sleep"]
+            "roles": ["common","hardening","security_tools","burp","ai_clients","ai_guest","rag_client","disable_sleep","mcp_servers"]
           }
         mode: "0644"

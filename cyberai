@@ -30,6 +30,8 @@ IMAGES
 
 VM LIFECYCLE
   new <name> [--profile P]   Linked clone of the golden snapshot (P: lite|standard|heavy)
+                             New clones are ALWAYS offline — no --net here. Give it a
+                             network at start: start <name> --net nat|bridged|airgap
   start <name> [--net MODE] [--headless]
   stop <name>                ACPI shutdown
   net <name> <MODE>          Set network mode (offline|airgap|nat|bridged); VM must be off
@@ -40,6 +42,13 @@ VM LIFECYCLE
   clipboard/DnD              Declared in config/platform.yml (.vm_defaults) and applied
                              automatically on base import, golden build and every clone.
                              Read-only drift check: ./cyberai doctor
+
+MCP (in-VM guest CLI, not a host command)
+  cyberai mcp status         Baked MCP server + browser versions (offline-safe)
+  cyberai mcp verify         Offline health check of the baked browser
+  cyberai mcp update         Refresh MCP servers to latest (needs net nat|bridged)
+  The Playwright MCP is headed-only, so a clone must be started with a GUI
+  session (not --headless) for the browser window to be visible.
 
 AI (host-native Ollama)
   ai pull|list|rm|bench      Manage/benchmark local models

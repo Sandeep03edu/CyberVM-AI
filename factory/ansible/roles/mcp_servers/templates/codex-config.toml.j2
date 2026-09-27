@@ -1,0 +1,16 @@
+# Codex CLI — CyberAI
+model_provider = "ollama"
+
+[model_providers.ollama]
+name = "Ollama (host)"
+base_url = "http://{{ host_ai_ip }}:{{ ollama_port }}/v1"
+{% for s in mcp_local %}
+[mcp_servers.{{ s.name }}]
+command = "{{ s.command }}"
+args = {{ s.args | default([]) | to_json }}
+enabled = true
+# MCP clients default to a 10s startup timeout, which is too tight on a cold
+# page cache right after a clone boots.
+startup_timeout_sec = 60
+tool_timeout_sec = 120
+{% endfor %}

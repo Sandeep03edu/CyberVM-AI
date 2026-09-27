@@ -1,0 +1,11 @@
+# {{ ansible_managed | default('rendered by the mcp_servers role — do not edit by hand') }}
+# Install plan for cyberai-mcp-install, derived from config/mcp/servers.yml.
+# Format (pipe-delimited, one server per line; '#' lines are comments):
+#
+#   name|package|bin|command|version|browsers_path|browser|no_shell
+#
+# Kept separate from the script so /usr/local/bin/cyberai-mcp-install is static
+# shell that works identically during `golden build` and inside a clone.
+{% for s in mcp_local %}
+{{ s.name }}|{{ s.package }}|{{ s.bin }}|{{ s.command }}|{{ s.version }}|{{ s.browsers_path }}|{{ s.install_browser }}|{{ 'true' if s.install_no_shell | default(false) else 'false' }}
+{% endfor %}

@@ -7,6 +7,10 @@
 #   cyberai ai rm <model>
 #   cyberai ai opencode [model:tag] <task>
 #   cyberai opencode <task>
+# Plus in-VM management of the MCP servers baked into the golden image:
+#   cyberai mcp status
+#   cyberai mcp verify
+#   cyberai mcp update
 # Host-only operations (golden build, bench, tune, RAG, transfer) stay on the host as ./cyberai.
 set -euo pipefail
 
@@ -29,6 +33,12 @@ cyberai (guest) - talk to the host LLM from inside a Kali clone.
   cyberai ai rm <model>                      Delete a model from the host Ollama
   cyberai ai opencode [model:tag] <task>     Run opencode against the local model (ollama/<model>)
   cyberai opencode <task>                    Shortcut for \`cyberai ai opencode\`
+
+  cyberai mcp status                         Baked MCP server + browser versions
+  cyberai mcp verify                         Offline health check for the baked browser
+  cyberai mcp update                         Refresh MCP servers to the latest release
+                                            (needs net mode nat|bridged; the baked
+                                             version keeps working with no network)
   cyberai help                               This message
 
 Default model: ${DEFAULT_MODEL} (override with CYBERAI_AI_MODEL).
@@ -110,11 +120,56 @@ ai_dispatch() {
   esac
 }
 
+# ── MCP servers (baked into the golden image by the mcp_servers role) ────────
+# The browser is baked once at golden-build time and inherited by every linked
+# clone via copy-on-write, so `status` and `verify` need no network at all.
+# `update` is the only one that reaches out, and it says so clearly when the VM
+# has no route rather than hanging on a DNS timeout.
+_mcp_tool() {
+  command -v cyberai-mcp-install >/dev/null 2>&1 || die \
+    "the MCP servers are not in this image - they ship in the golden image (mcp_servers role); rebuild golden and create a fresh clone."
+}
+
+# sudo resets PATH (secure_path), which may not include the directory the
+# installer lives in - so a bare `sudo cyberai-mcp-install` can fail with
+# "command not found" even though the file is right there. Always hand sudo an
+# absolute path. This mirrors mcp_servers' dest: /usr/local/bin/cyberai-mcp-install
+# and is only a fallback if the binary somehow moved off PATH.
+_mcp_installer() {
+  command -v cyberai-mcp-install 2>/dev/null || printf '%s' /usr/local/bin/cyberai-mcp-install
+}
+
+_need_internet() {
+  ip route get 1.1.1.1 >/dev/null 2>&1 || die \
+"no internet route from this VM (net mode is probably offline or airgap).
+  On the host:  cyberai net <vm> nat      (or bridged)
+
+  The version baked into this image already works offline - 'cyberai mcp status',
+  'cyberai mcp verify' and all three agents need no network. Only 'mcp update'
+  downloads anything new."
+}
+
+mcp_status() { _mcp_tool; exec "$(_mcp_installer)" status; }
+mcp_verify() { _mcp_tool; exec "$(_mcp_installer)" verify; }
+mcp_update() { _mcp_tool; _need_internet; exec sudo "$(_mcp_installer)" update; }
+
+mcp_dispatch() {
+  local sub="${1:-help}"; shift || true
+  case "$sub" in
+    status) mcp_status ;;
+    verify) mcp_verify ;;
+    update) mcp_update ;;
+    help|-h|--help) usage ;;
+    *) err "unknown mcp command: $sub"; usage; exit 2 ;;
+  esac
+}
+
 main() {
   local cmd="${1:-help}"; shift || true
   case "$cmd" in
     ai)       ai_dispatch "$@" ;;
     opencode) ai_opencode "$@" ;;
+    mcp)      mcp_dispatch "$@" ;;
     help|-h|--help) usage ;;
     *) err "unknown command: $cmd"; usage; exit 2 ;;
   esac

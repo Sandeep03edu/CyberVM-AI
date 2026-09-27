@@ -9,7 +9,8 @@
 > Every fact here is traced to the real code: `services/rag/ingest/run.py`,
 > `services/rag/api/main.py`, `services/rag/docker-compose.yml`,
 > `services/rag/sources.yml`, `lib/rag.sh`, and the client templates under
-> `factory/ansible/roles/rag_client/templates/`.
+> `factory/ansible/roles/mcp_servers/templates/` (rendering moved out of `rag_client` into the
+> `mcp_servers` role, which owns all three client config files; the `cyberai-rag` entries are unchanged).
 
 ---
 
@@ -239,12 +240,21 @@ Filters you can pass: `tier_max` (max trust tier, default 4), `since` (ISO date,
 `rag-api` exposes an MCP endpoint at `/mcp` with two tools:
 `search_security_kb` and `get_cve`. The golden image already wires this server —
 named **`cyberai-rag`** — into the three CLIs via templates in
-`factory/ansible/roles/rag_client/templates/`:
+`factory/ansible/roles/mcp_servers/templates/`:
 
 - **Claude** (`claude-mcp.json.j2`) → `http://<host>:8088/mcp`
 - **Codex** (`codex-config.toml.j2`) → same endpoint
 - **OpenCode** (`opencode.json.j2`) → same endpoint, but **`"enabled": false` by
   default** — flip it to `true` to turn the tool on for OpenCode.
+
+> **Known gap (not yet fixed).** Claude Code does not read
+> `~/.config/cyberai/claude-mcp.json`, and templating `~/.claude.json` is not an
+> option because it holds onboarding state and caches. The fix is to register the
+> server with `claude mcp add --scope user --transport http cyberai-rag <url>`
+> during provisioning, the same way the `mcp_servers` role already registers the
+> Playwright MCP. Until that lands, **`cyberai-rag` is effectively configured for
+> Codex only**, not for Claude or OpenCode. The Playwright MCP *is* correctly
+> registered with all three.
 
 ### 3. CLI wrappers (the everyday path)
 ```bash
