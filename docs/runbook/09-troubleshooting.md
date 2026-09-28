@@ -26,7 +26,38 @@ Docker publishes bypass ufw; we bind compose ports to `192.168.57.1` explicitly.
 `ss -ltnp | grep 8088` — it should show `192.168.57.1:8088`, not `0.0.0.0`.
 
 **Disk filling up**
-Linked clones grow. `./cyberai destroy <name>` unused ones; keep only the last 2 OVA releases (automatic).
+Three usual causes, in the order worth checking:
+1. **Golden snapshot chain.** Every `golden build` appends a differencing disk that is never pruned, so the
+   golden grows ~1.3 GB per build forever. This is usually the biggest one — check it with
+   `./cyberai golden reset --dry-run` and fix with `./cyberai golden reset`. See §3.5 of the golden-build
+   runbook.
+2. **Linked clones.** `./cyberai destroy <name>` for unused ones.
+3. **OVA releases.** Keep only the last 2 (automatic on export); `./cyberai release list` shows them and
+   `./cyberai release prune 2` trims.
+
+`du -sh images/CyberAI-Kali-Golden` tells you which of these is biting.
+
+**`golden reset` refuses: "linked clones exist"**
+A clone pins the golden snapshot it was built from, and VirtualBox will not delete a snapshot that has
+dependants — so the reset would fail partway through. Destroy the clones first (`./cyberai destroy <name>`).
+The check runs before anything is deleted, so a refusal is always safe.
+
+**`cyberai new` says "no golden snapshot" right after a reset**
+The reset deletes `.cyberai.golden-snap` because it pointed at a snapshot that no longer exists. Finish the
+build (`./cyberai golden build`) and it is rewritten.
+
+**The golden is gone / missing after a failed `golden reset`**
+Expected and always recoverable — the reset never touches Base:
+```
+$ ./cyberai golden build          # Base is intact, this always works
+```
+If you ran the reset with `--keep-ova` and want the old state back instead:
+```
+$ ./cyberai release import images/releases/CyberAI-Kali-<date>.ova
+```
+
+**`golden build` starts failing with a snapshot/differencing-disk error**
+The chain has probably hit VirtualBox's 255 differencing-disk limit. `./cyberai golden reset` clears it.
 
 ---
 

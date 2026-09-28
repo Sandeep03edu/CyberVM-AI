@@ -25,7 +25,13 @@ IMAGES
   base import                Extract + register the verified Kali image as CyberAI-Kali-Base
   golden build               Clone base -> provision with Ansible -> snapshot golden-<date>
   golden verify              Re-run Ansible in check mode + SSH smoke tests
+  golden reset [--keep-ova]  Delete golden + its snapshot chain, rebuild from base.
+                             Caps the chain (~1.3GB per build, never pruned) at one
+                             snapshot. Base is never touched, so a failed reset is
+                             recoverable with: golden build. Flags: --keep-ova export
+                             a .ova first, --dry-run show the plan, --no-verify skip tests
   release                    Export golden snapshot to an .ova (+ sha256 + manifest)
+  release list|rm|prune      Inspect / delete / trim exported .ova releases
   import <file.ova>          Register an exported .ova on this machine
 
 VM LIFECYCLE
@@ -87,7 +93,7 @@ case "$cmd" in
                case "$cmd" in
                  base)     source "$CYBERAI_HOME/lib/base.sh";      base_dispatch "$@" ;;
                  golden)   source "$CYBERAI_HOME/lib/golden.sh";    golden_dispatch "$@" ;;
-                 release)  source "$CYBERAI_HOME/lib/release.sh";   release_export "$@" ;;
+                 release)  source "$CYBERAI_HOME/lib/release.sh";   release_dispatch "$@" ;;
                  import)   source "$CYBERAI_HOME/lib/release.sh";   release_import "$@" ;;
                  new)      source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch new "$@" ;;
                  resize)   source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch resize "$@" ;;

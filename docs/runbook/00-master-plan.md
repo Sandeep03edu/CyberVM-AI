@@ -46,12 +46,18 @@ UBUNTU HOST  ── ./cyberai host-setup (one script, any machine)
  │    qdrant + rag-api (REST + MCP /mcp) + host systemd-user ingest timers
  ├─ ufw on cyberai host-only net: allow only 11434, 8088 (+8000 during transfer)
  └─ VirtualBox
-      ├─ CyberAI-Kali-Base    (verified official image; never used for work)
-      ├─ CyberAI-Kali-Golden  (Ansible-provisioned; snapshot golden-<date>)
+      ├─ CyberAI-Kali-Base    (verified official image; never used for work; the rebuild path)
+      ├─ CyberAI-Kali-Golden  (Ansible-provisioned; snapshot golden-<date>; rebuilt via `golden reset`)
       └─ kali-<name>          (LINKED clones of the golden snapshot; disposable)
            NIC1 internet plane: none | nat(localhost-off) | bridged(confirm)
            NIC2 AI plane: host-only "cyberai" 192.168.57.0/24 → reaches Ollama+RAG only
 ```
+
+**Golden disk growth.** Each `golden build` re-provisions in place and snapshots again, and VirtualBox
+stores every snapshot as a differencing disk that is never pruned — the golden grows ~1.3 GB per build
+forever. `./cyberai golden reset` collapses the chain back to a single disk by rebuilding from Base
+(~15 GB Base + ~24 GB provisioned floor). It never touches Base, so it is always safe to run and always
+recoverable with `golden build`. See §3.5 of the golden-build runbook.
 
 **RAM budget (32 GB):** desktop ~7 + Kali `balanced` 12 + qwen2.5:3b-instruct ~6–7 (unloads after 5 min idle) + RAG ~1.5 ≈ 27 GB — one Kali VM at a time, comfortably. Two at once needs `--ram 8` clones (`lean`).
 `cyberai start` refuses to boot if the host would drop below a 6 GB reserve. Profiles: `lean` 8 GB/4 vCPU, `balanced` 12 GB/6 vCPU (default), `large` 16 GB/8 vCPU. Override per clone with `--ram GB` / `--cpus N`, or change an existing clone with `./cyberai resize <name> --ram GB` (VM off) — neither modifies the golden image.

@@ -213,14 +213,21 @@ vm_stop()    { local vm; vm="$(_clone_name "${1:?vm}")"; vm_exists "$vm" || vm="
 vm_snapshot(){ local vm; vm="$(_clone_name "${1:?vm}")"; VBoxManage snapshot "$vm" take "${2:?tag}" && ok "snapshot $2 on $vm"; }
 vm_restore() { local vm; vm="$(_clone_name "${1:?vm}")"; require_off "$vm"; VBoxManage snapshot "$vm" restore "${2:?tag}" && ok "restored $2 on $vm"; }
 
+# Raw unregister + delete. Deliberately has NO confirmation and NO protected-VM
+# guard: `golden reset` must be able to replace the golden itself. Anything
+# user-facing should call vm_destroy instead, which adds both checks.
+_vm_unregister() { local vm="$1"
+  vm_running "$vm" && { VBoxManage controlvm "$vm" poweroff >/dev/null 2>&1; sleep 3; }
+  VBoxManage unregistervm "$vm" --delete
+}
+
 vm_destroy() {
   local name="${1:?vm}"; local vm; vm="$(_clone_name "$name")"; vm_exists "$vm" || vm="$name"
   _is_protected "$vm" && die "refusing to destroy protected VM: $vm"
   vm_exists "$vm" || die "no such VM: $name"
   warn "This permanently deletes $vm and its disks."
   confirm "Destroy $vm?" || die "aborted."
-  vm_running "$vm" && { VBoxManage controlvm "$vm" poweroff; sleep 3; }
-  VBoxManage unregistervm "$vm" --delete
+  _vm_unregister "$vm"
   ok "Destroyed $vm."
 }
 
@@ -232,9 +239,13 @@ _cyberai_vms() {
     local cfg; cfg="$(_vm_cfg "$n" CfgFile)"
     case "$n" in
       CyberAI-Kali-*|kali-*) echo "$n" ;;                       # base/golden + legacy clones
-      *) case "$cfg" in                                        # unprefixed clones live under labs
+      *) # Unprefixed clones are identified by living under our own roots. Both
+         # roots must actually be set: an empty $CYBERAI_LABS would make the
+         # pattern below degenerate to "/*" and claim every VM on the host.
+         [ -n "$CYBERAI_LABS" ] && [ -n "$CYBERAI_IMAGES" ] || continue
+         case "$cfg" in
            "$CYBERAI_LABS"/*|"$CYBERAI_IMAGES"/*) echo "$n" ;;
-           esac ;;
+         esac ;;
     esac
   done
 }

@@ -97,3 +97,76 @@ any profile conflict (each server is registered with `--isolated`).
 > **Claude Code needs a one-time approval.** A server added with `claude mcp add` shows as
 > `⏸ Pending approval` until you approve it. Run `claude` once in the clone and accept the
 > `playwright` prompt, or use `/mcp` inside a session. `opencode` and `codex` have no such step.
+
+## 3.5 Reset the golden (chain growth and disk)
+
+Every `golden build` re-provisions the existing golden **in place**, and every provision ends by taking a
+new snapshot. VirtualBox implements each snapshot as a *differencing disk* layered on the previous one, and
+**nothing ever prunes them** — so the chain, and the golden's on-disk size, grows by roughly **1.3 GB per
+build** without bound.
+
+| | |
+|---|---|
+| Base (immutable parent) | ~15 GB, 1 snapshot — never grows |
+| Golden, freshly built | ~24 GB — one snapshot, the floor |
+| Golden, after N builds | ~24 GB + N × 1.3 GB |
+
+Two ceilings eventually bite: **disk** (a build-a-day costs ~470 GB/year), and VirtualBox's **255
+differencing-disk limit per chain**, which is reached in well under a year at that rate and makes
+`golden build` start failing.
+
+`golden reset` collapses the chain back to a single disk by destroying the golden and rebuilding it from
+Base:
+
+```
+$ ./cyberai golden reset --dry-run      # show the plan, change nothing
+$ ./cyberai golden reset
+```
+```
+  DRY RUN - nothing will be changed
+    golden       CyberAI-Kali-Golden
+    snapshots    14
+    disk now     39GB
+    safety copy  no - recovery is 'cyberai golden build'
+    after        1 snapshot, one fresh provision from base
+    verify       ansible check-mode + SSH smoke tests
+```
+
+It refuses to run unless **no linked clone exists** — a clone pins the golden snapshot it was built from, and
+VirtualBox will not delete a snapshot that has dependants, so the destroy would otherwise fail partway.
+Destroy your clones first. It then deletes the golden, clears the now-dangling `.cyberai.golden-snap` (so a
+failed rebuild reports the real cause instead of a confusing VBoxManage error), rebuilds from Base, and runs
+`golden verify`. Add `--no-verify` to skip the tests.
+
+### Why there is no safety copy by default
+
+**Base is never touched**, so a failed reset is always recoverable:
+
+```bash
+./cyberai golden build      # Base is intact; this always works
+```
+
+A snapshot chain is a convenience, not a safety net. Exporting an `.ova` first only adds a way back to the
+*old* state if the new build comes out broken — useful when you are changing the Ansible roles and need a
+working VM immediately, but it costs ~39 GB and ~10 minutes you usually do not need. Hence opt-in:
+
+```
+$ ./cyberai golden reset --keep-ova
+```
+This exports a flattened `.ova` first, checks that there is room for it, and refuses rather than fill the
+filesystem (in which case it tells you to drop the flag). After a successful reset it prints the exact
+command to discard the copy once you trust the new build.
+
+### Managing exported releases
+
+```
+$ ./cyberai release list                            # .ova files, sizes, dates
+$ ./cyberai release rm CyberAI-Kali-2026.09.27.ova  # delete one + its .sha256/.manifest.json
+$ ./cyberai release prune 2                         # keep only the 2 newest (export does this itself)
+$ ./cyberai import <file.ova>                       # re-register an exported appliance
+```
+
+### When to run it
+
+Roughly every few weeks, or whenever `./cyberai golden reset --dry-run` shows a deep chain. It is
+maintenance, not a repair — run it on a build you have already verified, not in the middle of risky edits.
