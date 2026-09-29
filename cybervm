@@ -1,28 +1,34 @@
 #!/usr/bin/env bash
-# cyberai — CyberAI Kali platform control CLI
+# cybervm — CyberVM Kali platform control CLI
 # See docs/runbook/00-master-plan.md for the full plan.
 set -euo pipefail
 
-CYBERAI_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export CYBERAI_HOME
+# Resolve through a symlink (e.g. /usr/local/bin/cybervm on PATH) so CYBERVM_HOME
+# always points at the real repo, not the symlink's directory. host-setup installs
+# that symlink (see lib/host.sh _host_cli_link), letting `cybervm` run from anywhere.
+CYBERVM_SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+CYBERVM_HOME="$(cd "$(dirname "$CYBERVM_SELF")" && pwd)"
+export CYBERVM_HOME
 
 # shellcheck source=lib/common.sh
-source "$CYBERAI_HOME/lib/common.sh"
+source "$CYBERVM_HOME/lib/common.sh"
 load_env
 
 usage() {
   cat <<USAGE
-cyberai — control CLI for the CyberAI Kali platform
+cybervm — control CLI for the CyberVM Kali platform
 
 HOST SETUP
-  host-setup                 Install/configure host (VirtualBox net, Ollama, deps, ufw)
+  host-setup                 Install/configure host (VirtualBox net, Ollama, deps, ufw).
+                             Also symlinks this CLI onto PATH, so after the first
+                             (./cybervm host-setup) run you can type 'cybervm ...' anywhere.
   host setup|ollama-pin      host-setup alias; refresh the pinned Ollama release from GitHub
   doctor                     Print a PASS/FAIL readiness table
   pins check                 Verify pinned downloads (Burp BApp serials) vs live store
   pins refresh               Re-pin drifted Burp extensions (serial + sha256)
 
 IMAGES
-  base import                Extract + register the verified Kali image as CyberAI-Kali-Base
+  base import                Extract + register the verified Kali image as CyberVM-Kali-Base
   golden build               Clone base -> provision with Ansible -> snapshot golden-<date>
   golden verify              Re-run Ansible in check mode + SSH smoke tests
   golden reset [--keep-ova]  Delete golden + its snapshot chain, rebuild from base.
@@ -50,15 +56,15 @@ VM LIFECYCLE
   snapshot <name> <tag>      Take a snapshot
   restore <name> <tag>       Restore a snapshot
   destroy <name>             Power off + delete a clone (never Base/Golden)
-  list                       List CyberAI VMs and state
+  list                       List CyberVM VMs and state
   clipboard/DnD              Declared in config/platform.yml (.vm_defaults) and applied
                              automatically on base import, golden build and every clone.
-                             Read-only drift check: ./cyberai doctor
+                             Read-only drift check: ./cybervm doctor
 
 MCP (in-VM guest CLI, not a host command)
-  cyberai mcp status         Baked MCP server + browser versions (offline-safe)
-  cyberai mcp verify         Offline health check of the baked browser
-  cyberai mcp update         Refresh MCP servers to latest (needs net nat|bridged)
+  cybervm mcp status         Baked MCP server + browser versions (offline-safe)
+  cybervm mcp verify         Offline health check of the baked browser
+  cybervm mcp update         Refresh MCP servers to latest (needs net nat|bridged)
   The Playwright MCP is headed-only, so a clone must be started with a GUI
   session (not --headless) for the browser window to be visible.
 
@@ -84,30 +90,30 @@ USAGE
 
 cmd="${1:-help}"; shift || true
 case "$cmd" in
-  host-setup)  source "$CYBERAI_HOME/lib/host.sh";     host_setup "$@" ;;
-  host)        source "$CYBERAI_HOME/lib/host.sh";     host_cmd "$@" ;;
-  doctor)      source "$CYBERAI_HOME/lib/doctor.sh";   doctor "$@" ;;
-  pins)        source "$CYBERAI_HOME/lib/pins.sh";     pins_dispatch "$@" ;;
+  host-setup)  source "$CYBERVM_HOME/lib/host.sh";     host_setup "$@" ;;
+  host)        source "$CYBERVM_HOME/lib/host.sh";     host_cmd "$@" ;;
+  doctor)      source "$CYBERVM_HOME/lib/doctor.sh";   doctor "$@" ;;
+  pins)        source "$CYBERVM_HOME/lib/pins.sh";     pins_dispatch "$@" ;;
   base|golden|release|import|new|resize|start|net|ai|rag|transfer|secrets|backup)
                require_host_setup
                case "$cmd" in
-                 base)     source "$CYBERAI_HOME/lib/base.sh";      base_dispatch "$@" ;;
-                 golden)   source "$CYBERAI_HOME/lib/golden.sh";    golden_dispatch "$@" ;;
-                 release)  source "$CYBERAI_HOME/lib/release.sh";   release_dispatch "$@" ;;
-                 import)   source "$CYBERAI_HOME/lib/release.sh";   release_import "$@" ;;
-                 new)      source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch new "$@" ;;
-                 resize)   source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch resize "$@" ;;
-                 start)    source "$CYBERAI_HOME/lib/vm.sh";        vm_dispatch start "$@" ;;
-                 net)      source "$CYBERAI_HOME/lib/net.sh";       net_set "$@" ;;
-                 ai)       source "$CYBERAI_HOME/lib/ai.sh";        ai_dispatch "$@" ;;
-                 rag)      source "$CYBERAI_HOME/lib/rag.sh";       rag_dispatch "$@" ;;
-                 transfer) source "$CYBERAI_HOME/lib/transfer.sh";  transfer_dispatch "$@" ;;
-                 secrets)  source "$CYBERAI_HOME/lib/secrets.sh";   secrets_dispatch "$@" ;;
-                 backup)   source "$CYBERAI_HOME/lib/release.sh";   backup_run "$@" ;;
+                 base)     source "$CYBERVM_HOME/lib/base.sh";      base_dispatch "$@" ;;
+                 golden)   source "$CYBERVM_HOME/lib/golden.sh";    golden_dispatch "$@" ;;
+                 release)  source "$CYBERVM_HOME/lib/release.sh";   release_dispatch "$@" ;;
+                 import)   source "$CYBERVM_HOME/lib/release.sh";   release_import "$@" ;;
+                 new)      source "$CYBERVM_HOME/lib/vm.sh";        vm_dispatch new "$@" ;;
+                 resize)   source "$CYBERVM_HOME/lib/vm.sh";        vm_dispatch resize "$@" ;;
+                 start)    source "$CYBERVM_HOME/lib/vm.sh";        vm_dispatch start "$@" ;;
+                 net)      source "$CYBERVM_HOME/lib/net.sh";       net_set "$@" ;;
+                 ai)       source "$CYBERVM_HOME/lib/ai.sh";        ai_dispatch "$@" ;;
+                 rag)      source "$CYBERVM_HOME/lib/rag.sh";       rag_dispatch "$@" ;;
+                 transfer) source "$CYBERVM_HOME/lib/transfer.sh";  transfer_dispatch "$@" ;;
+                 secrets)  source "$CYBERVM_HOME/lib/secrets.sh";   secrets_dispatch "$@" ;;
+                 backup)   source "$CYBERVM_HOME/lib/release.sh";   backup_run "$@" ;;
                esac
                ;;
   stop|snapshot|restore|destroy|list)
-               source "$CYBERAI_HOME/lib/vm.sh";       vm_dispatch "$cmd" "$@" ;;
+               source "$CYBERVM_HOME/lib/vm.sh";       vm_dispatch "$cmd" "$@" ;;
   help|-h|--help) usage ;;
   *) err "unknown command: $cmd"; usage; exit 2 ;;
 esac

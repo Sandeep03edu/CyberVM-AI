@@ -1,19 +1,19 @@
-# lib/base.sh — create the CyberAI-Kali-Base VM from the verified .7z (.vbox+.vdi).
+# lib/base.sh — create the CyberVM-Kali-Base VM from the verified .7z (.vbox+.vdi).
 
 base_dispatch() { local sub="${1:-}"; shift || true
-  case "$sub" in import) base_import "$@";; *) die "usage: cyberai base import";; esac; }
+  case "$sub" in import) base_import "$@";; *) die "usage: cybervm base import";; esac; }
 
 base_import() {
   local base_name; base_name="$(platform .vm_names.base)"
   vm_exists "$base_name" && { warn "$base_name already exists."; return 0; }
 
-  local arc="$CYBERAI_DOWNLOADS/kali/$(platform .kali.archive)"
+  local arc="$CYBERVM_DOWNLOADS/kali/$(platform .kali.archive)"
   [ -f "$arc" ] || die "Kali archive missing: $arc"
   log "Verifying Kali archive checksum…"
   echo "$(platform .kali.sha256)  $arc" | sha256sum -c - || die "Checksum mismatch — do NOT import."
   ok "Checksum verified."
 
-  local dest="$CYBERAI_IMAGES/base"
+  local dest="$CYBERVM_IMAGES/base"
   mkdir -p "$dest"
   log "Extracting archive to $dest …"
   7z x -y -o"$dest" "$arc" >/dev/null
@@ -37,7 +37,7 @@ _base_harden() { local vm="$1"
   VBoxManage modifyvm "$vm" \
     --audio-enabled off --usb-ohci off --usb-ehci off --usb-xhci off \
     --nic1 nat --nat-localhostreachable1 off \
-    --nic2 hostonly --host-only-adapter2 "$(cat "$CYBERAI_HOME/.cyberai.netif" 2>/dev/null || echo vboxnet0)"
+    --nic2 hostonly --host-only-adapter2 "$(cat "$CYBERVM_HOME/.cybervm.netif" 2>/dev/null || echo vboxnet0)"
   # clipboard + DnD come from config/platform.yml (.vm_defaults) — never hardcoded
   vm_apply_host_config "$vm"
   ok "Base configured: clipboard/DnD per config; no audio/USB; NAT loopback off; NIC2 on AI plane."
@@ -47,11 +47,11 @@ _base_bootstrap_ssh() { local vm="$1"
   log "Bootstrapping SSH into base via Guest Additions (headless)…"
   VBoxManage startvm "$vm" --type headless
   local ip; ip=$(vm_wait_ip "$vm" 1 180) || { warn "No NIC2 IP; is Guest Additions running? Enable SSH manually."; return 0; }
-  local u="$CYBERAI_VM_USER" p="$CYBERAI_VM_PASS" pub; pub=$(cat "${CYBERAI_SSH_KEY}.pub")
+  local u="$CYBERVM_VM_USER" p="$CYBERVM_VM_PASS" pub; pub=$(cat "${CYBERVM_SSH_KEY}.pub")
   local gc="VBoxManage guestcontrol $vm --username $u --password $p"
   $gc run --exe /bin/bash -- -c "echo '$p' | sudo -S systemctl enable --now ssh" || true
   $gc run --exe /bin/bash -- -c "mkdir -p ~/.ssh && echo '$pub' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
-  $gc run --exe /bin/bash -- -c "echo '$p' | sudo -S bash -c 'echo \"$u ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/cyberai'"
-  ok "SSH bootstrapped. Test: ssh -i $CYBERAI_SSH_KEY $u@$ip true"
+  $gc run --exe /bin/bash -- -c "echo '$p' | sudo -S bash -c 'echo \"$u ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/cybervm'"
+  ok "SSH bootstrapped. Test: ssh -i $CYBERVM_SSH_KEY $u@$ip true"
   VBoxManage controlvm "$vm" acpipowerbutton 2>/dev/null || true
 }

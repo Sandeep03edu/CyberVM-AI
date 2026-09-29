@@ -7,8 +7,8 @@
 # Each BApp is pinned to a fixed version via its PortSwigger `serial` (the download
 # URL is .../bapps/download/<uuid>/<serial>). `sha256` is the integrity hash of the
 # bytes at that serial. Keep this lock current with:
-#   ./cyberai pins check     # detects serial drift vs the live store (no download)
-#   ./cyberai pins refresh   # re-pins any drifted serial + sha256
+#   ./cybervm pins check     # detects serial drift vs the live store (no download)
+#   ./cybervm pins refresh   # re-pins any drifted serial + sha256
 # golden build/verify abort instantly if pins are stale.
 #
 # NOTE: url + sha256 are populated before golden build. Some BApps (Turbo Intruder)

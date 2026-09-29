@@ -1,7 +1,7 @@
 ---
 - name: Load Burp extension lock
   set_fact:
-    burp: "{{ lookup('file', cyberai_config ~ '/burp/extensions.lock.yml') | from_yaml }}"
+    burp: "{{ lookup('file', cybervm_config ~ '/burp/extensions.lock.yml') | from_yaml }}"
 
 - name: Install Burp Suite (Kali package)
   apt: { name: burpsuite, state: present }

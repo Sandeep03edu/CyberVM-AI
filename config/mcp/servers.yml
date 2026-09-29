@@ -4,25 +4,25 @@
 # Mirrors config/ai/clients.yml convention: `version: "latest"` here, pinned to
 # an exact version deliberately before release builds. Each clone inherits the
 # baked browser through linked-clone copy-on-write, so a clone is usable with no
-# network at all; `cyberai mcp update` inside a clone refreshes to the newest
+# network at all; `cybervm mcp update` inside a clone refreshes to the newest
 # release on demand (needs net mode nat|bridged).
 #
 # The `playwright` server is a MATCHED PAIR: @playwright/mcp pins a `playwright`
 # version, which in turn pins an exact Chromium build. The version recorded in
-# /etc/cyberai/mcp.lock is therefore the real reproducibility anchor, not this
-# file — check it with `cyberai mcp status` inside a clone.
+# /etc/cybervm/mcp.lock is therefore the real reproducibility anchor, not this
+# file — check it with `cybervm mcp status` inside a clone.
 #
 # Bump with: edit `version` below, then re-provision golden
-# (`./cyberai golden build`) and re-create clones. `bake` is a no-op once a
-# clone already has /opt/ms-playwright/.cyberai-baked, so use
-# `sudo cyberai-mcp-install bake --force` to force a re-bake.
+# (`./cybervm golden build`) and re-create clones. `bake` is a no-op once a
+# clone already has /opt/ms-playwright/.cybervm-baked, so use
+# `sudo cybervm-mcp-install bake --force` to force a re-bake.
 servers:
   - name: playwright
     transport: stdio
     package: "@playwright/mcp"
     bin: "playwright-mcp"            # npm bin exposed by @playwright/mcp
     version: "latest"                # "latest" or an exact semver
-    command: "/usr/local/bin/cyberai-playwright-mcp"   # baked launcher (wrapper)
+    command: "/usr/local/bin/cybervm-playwright-mcp"   # baked launcher (wrapper)
     args: ["--isolated"]             # in-memory profile -> claude+codex+opencode in parallel
     browsers_path: "/opt/ms-playwright"
     install_browser: chromium

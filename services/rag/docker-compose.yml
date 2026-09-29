@@ -1,12 +1,12 @@
-# CyberAI RAG stack — bound to the private AI-plane IP only.
+# CyberVM RAG stack — bound to the private AI-plane IP only.
 services:
   qdrant:
     image: qdrant/qdrant:v1.12.4
     restart: unless-stopped
     ports:
-      - "${CYBERAI_HOST_IP}:6333:6333"
+      - "${CYBERVM_HOST_IP}:6333:6333"
     volumes:
-      - "${CYBERAI_RAG}/data:/qdrant/storage"
+      - "${CYBERVM_RAG}/data:/qdrant/storage"
 
   rag-api:
     build: ./api
@@ -14,12 +14,12 @@ services:
     depends_on: [qdrant]
     environment:
       QDRANT_URL: "http://qdrant:6333"
-      OLLAMA_URL: "http://${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}"
+      OLLAMA_URL: "http://${CYBERVM_HOST_IP}:${CYBERVM_OLLAMA_PORT}"
       EMBED_MODEL: "nomic-embed-text"
     ports:
-      - "${CYBERAI_HOST_IP}:${CYBERAI_RAG_PORT}:8088"
+      - "${CYBERVM_HOST_IP}:${CYBERVM_RAG_PORT}:8088"
 
-  # one-shot ingester (run via: cyberai rag update)
+  # one-shot ingester (run via: cybervm rag update)
   ingest:
     build:
       context: .
@@ -27,7 +27,7 @@ services:
     profiles: ["tools"]
     environment:
       QDRANT_URL: "http://qdrant:6333"
-      OLLAMA_URL: "http://${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}"
+      OLLAMA_URL: "http://${CYBERVM_HOST_IP}:${CYBERVM_OLLAMA_PORT}"
     volumes:
-      - "${CYBERAI_RAG}/sources:/sources:ro"
-      - "${CYBERAI_RAG}/state:/state"
+      - "${CYBERVM_RAG}/sources:/sources:ro"
+      - "${CYBERVM_RAG}/state:/state"

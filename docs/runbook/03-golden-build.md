@@ -1,6 +1,6 @@
 # Phase 3 — Golden build (Ansible provisioning)
 
-**Goal:** turn Base into a fully-tooled `CyberAI-Kali-Golden` snapshot, reproducibly.
+**Goal:** turn Base into a fully-tooled `CyberVM-Kali-Golden` snapshot, reproducibly.
 
 ## Before you run
 - Fill any `TODO`s you care about in `config/tools/*.yml` and `config/burp/extensions.lock.yml`
@@ -8,11 +8,11 @@
 - The golden build needs internet (it boots the VM on NAT to `apt install`), and so do the
   Burp pins: every build/verify begins with a **pins preflight** that checks the BApp serial
   numbers in `config/burp/extensions.lock.yml` against the live PortSwigger store. If any have
-  drifted, the build aborts before the VM even boots — fix with `./cyberai pins refresh burp`.
+  drifted, the build aborts before the VM even boots — fix with `./cybervm pins refresh burp`.
 
 ## 3.1 Build
 ```
-$ ./cyberai golden build
+$ ./cybervm golden build
 ```
 It verifies the Burp pins → clones Base → boots on NAT → runs `ansible-playbook playbooks/golden.yml`:
 - **common:** upgrade, git/python/node, base utils
@@ -20,8 +20,8 @@ It verifies the Burp pins → clones Base → boots on NAT → runs `ansible-pla
 - **security_tools:** Kali metapackages + the tool list from `config/tools/apt.yml` (+ pip/github/binaries)
 - **burp:** Burp + Jython + pinned BApps + auto-load config
 - **ai_clients:** opencode, claude-code, codex + a profile.d hook
-- **ai_guest:** installs a guest-side `cyberai` CLI (`ai run|list|pull|rm|opencode`) that talks to host Ollama over the AI plane, plus `mcp status|verify|update` for the baked MCP servers
-- **rag_client:** creates the `~/.config/opencode`, `~/.codex` and `~/.config/cyberai` config dirs
+- **ai_guest:** installs a guest-side `cybervm` CLI (`ai run|list|pull|rm|opencode`) that talks to host Ollama over the AI plane, plus `mcp status|verify|update` for the baked MCP servers
+- **rag_client:** creates the `~/.config/opencode`, `~/.codex` and `~/.config/cybervm` config dirs
 - **disable_sleep:** masks the sleep/power targets and installs a per-user idle power-off so the VM stays awake
 - **mcp_servers:** reads `config/mcp/servers.yml`, bakes the **Playwright MCP** into the image, and writes
   all three client configs
@@ -38,40 +38,40 @@ Then it cleans apt, powers off, and snapshots `golden-<date>`.
   browser into `/root/.cache`, unreadable by `kali`), and the launcher sets the *same*
   `PLAYWRIGHT_BROWSERS_PATH` used at install time (a mismatch is the classic
   `Executable doesn't exist at ...` failure).
-- The resolved versions are recorded in **`/etc/cyberai/mcp.lock`** — that file, not the manifest, is the
+- The resolved versions are recorded in **`/etc/cybervm/mcp.lock`** — that file, not the manifest, is the
   real reproducibility anchor, because `@playwright/mcp` pins a `playwright` version which pins an exact
   Chromium build.
-- `bake` is a no-op when `/opt/ms-playwright/.cyberai-baked` already exists, so re-running the role on an
-  existing golden does not re-download. To force a re-bake, run `/usr/local/bin/cyberai-mcp-install bake --force` inside the golden VM (or `cyberai mcp update` inside a clone). `golden build` itself takes no flags — it always re-provisions the existing golden in place.
+- `bake` is a no-op when `/opt/ms-playwright/.cybervm-baked` already exists, so re-running the role on an
+  existing golden does not re-download. To force a re-bake, run `/usr/local/bin/cybervm-mcp-install bake --force` inside the golden VM (or `cybervm mcp update` inside a clone). `golden build` itself takes no flags — it always re-provisions the existing golden in place.
 
 ### Refreshing a clone to the newest release
 `config/mcp/servers.yml` uses `version: "latest"` (same convention as `config/ai/clients.yml`), so each
 clone can pull a newer release on demand from inside the VM:
 ```
-kali$ cyberai mcp status      # baked versions; diffs against the npm registry when reachable
-kali$ cyberai mcp verify      # offline health check of the baked browser
-kali$ cyberai mcp update      # refresh package + browser (skips OS deps); needs net nat|bridged
+kali$ cybervm mcp status      # baked versions; diffs against the npm registry when reachable
+kali$ cybervm mcp verify      # offline health check of the baked browser
+kali$ cybervm mcp update      # refresh package + browser (skips OS deps); needs net nat|bridged
 ```
 `update` is the only one that touches the network, and it fails with an explicit message when the VM has no
 route (net mode `offline`/`airgap`) rather than hanging — the baked version keeps working in that case.
-The `mcp_*` commands are on the guest `cyberai` CLI; there is no host-side equivalent.
+The `mcp_*` commands are on the guest `cybervm` CLI; there is no host-side equivalent.
 
 ## 3.2 Verify
 ```
-$ ./cyberai golden verify
+$ ./cybervm golden verify
 ```
 Runs Ansible in `--check` mode (expect no changes) and SSH smoke tests.
-✅ **Pass gate:** you see `nmap` version, `opencode` version, `guest cyberai ai run OK`,
+✅ **Pass gate:** you see `nmap` version, `opencode` version, `guest cybervm ai run OK`,
 and `ollama reachable from guest`.
-The snapshot name is saved to `.cyberai.golden-snap` (used by `cyberai new`).
+The snapshot name is saved to `.cybervm.golden-snap` (used by `cybervm new`).
 
 ## 3.3 Test the guest AI CLI from a fresh clone
-The guest `cyberai` (at `/usr/local/bin/cyberai`) is a separate, much smaller binary from the host CLI:
+The guest `cybervm` (at `/usr/local/bin/cybervm`) is a separate, much smaller binary from the host CLI:
 ```
-$ ./cyberai new work-01            # a new clone is always offline; change it with --net at start
-kali$ source /etc/profile.d/cyberai.sh
-kali$ cyberai ai run "what does nmap -sV do?"        # streams from host Ollama
-kali$ cyberai ai opencode "what does nmap -sV do?"   # opencode run ... --model ollama/qwen2.5:3b-instruct
+$ ./cybervm new work-01            # a new clone is always offline; change it with --net at start
+kali$ source /etc/profile.d/cybervm.sh
+kali$ cybervm ai run "what does nmap -sV do?"        # streams from host Ollama
+kali$ cybervm ai opencode "what does nmap -sV do?"   # opencode run ... --model ollama/qwen2.5:3b-instruct
 ```
 ✅ **Pass gate:** both answer with no internet — the reply came from host Ollama over the AI plane.
 
@@ -79,10 +79,10 @@ kali$ cyberai ai opencode "what does nmap -sV do?"   # opencode run ... --model 
 The browser is **headed by design** — the window is always visible so you can watch the agent work. It
 therefore needs a GUI session, and it never silently falls back to headless.
 ```
-$ ./cyberai new work-01
-$ ./cyberai start work-01                    # NOT --headless: a headed browser needs an X display
-kali$ cyberai mcp verify                     # offline: browser present + executable by kali
-kali$ cyberai mcp status
+$ ./cybervm new work-01
+$ ./cybervm start work-01                    # NOT --headless: a headed browser needs an X display
+kali$ cybervm mcp verify                     # offline: browser present + executable by kali
+kali$ cybervm mcp status
 ```
 Then from any of the three clients, ask it to visit a page and report the title:
 ```
@@ -119,22 +119,22 @@ differencing-disk limit per chain**, which is reached in well under a year at th
 Base:
 
 ```
-$ ./cyberai golden reset --dry-run      # show the plan, change nothing
-$ ./cyberai golden reset
+$ ./cybervm golden reset --dry-run      # show the plan, change nothing
+$ ./cybervm golden reset
 ```
 ```
   DRY RUN - nothing will be changed
-    golden       CyberAI-Kali-Golden
+    golden       CyberVM-Kali-Golden
     snapshots    14
     disk now     39GB
-    safety copy  no - recovery is 'cyberai golden build'
+    safety copy  no - recovery is 'cybervm golden build'
     after        1 snapshot, one fresh provision from base
     verify       ansible check-mode + SSH smoke tests
 ```
 
 It refuses to run unless **no linked clone exists** — a clone pins the golden snapshot it was built from, and
 VirtualBox will not delete a snapshot that has dependants, so the destroy would otherwise fail partway.
-Destroy your clones first. It then deletes the golden, clears the now-dangling `.cyberai.golden-snap` (so a
+Destroy your clones first. It then deletes the golden, clears the now-dangling `.cybervm.golden-snap` (so a
 failed rebuild reports the real cause instead of a confusing VBoxManage error), rebuilds from Base, and runs
 `golden verify`. Add `--no-verify` to skip the tests.
 
@@ -143,7 +143,7 @@ failed rebuild reports the real cause instead of a confusing VBoxManage error), 
 **Base is never touched**, so a failed reset is always recoverable:
 
 ```bash
-./cyberai golden build      # Base is intact; this always works
+./cybervm golden build      # Base is intact; this always works
 ```
 
 A snapshot chain is a convenience, not a safety net. Exporting an `.ova` first only adds a way back to the
@@ -151,7 +151,7 @@ A snapshot chain is a convenience, not a safety net. Exporting an `.ova` first o
 working VM immediately, but it costs ~39 GB and ~10 minutes you usually do not need. Hence opt-in:
 
 ```
-$ ./cyberai golden reset --keep-ova
+$ ./cybervm golden reset --keep-ova
 ```
 This exports a flattened `.ova` first, checks that there is room for it, and refuses rather than fill the
 filesystem (in which case it tells you to drop the flag). After a successful reset it prints the exact
@@ -160,13 +160,13 @@ command to discard the copy once you trust the new build.
 ### Managing exported releases
 
 ```
-$ ./cyberai release list                            # .ova files, sizes, dates
-$ ./cyberai release rm CyberAI-Kali-2026.09.27.ova  # delete one + its .sha256/.manifest.json
-$ ./cyberai release prune 2                         # keep only the 2 newest (export does this itself)
-$ ./cyberai import <file.ova>                       # re-register an exported appliance
+$ ./cybervm release list                            # .ova files, sizes, dates
+$ ./cybervm release rm CyberVM-Kali-2026.09.27.ova  # delete one + its .sha256/.manifest.json
+$ ./cybervm release prune 2                         # keep only the 2 newest (export does this itself)
+$ ./cybervm import <file.ova>                       # re-register an exported appliance
 ```
 
 ### When to run it
 
-Roughly every few weeks, or whenever `./cyberai golden reset --dry-run` shows a deep chain. It is
+Roughly every few weeks, or whenever `./cybervm golden reset --dry-run` shows a deep chain. It is
 maintenance, not a repair — run it on a build you have already verified, not in the middle of risky edits.

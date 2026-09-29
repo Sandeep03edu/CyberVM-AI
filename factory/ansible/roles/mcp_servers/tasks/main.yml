@@ -7,10 +7,10 @@
 # second write silently clobbers the first.
 - name: Load MCP server manifest
   set_fact:
-    mcp_servers: "{{ lookup('file', cyberai_config ~ '/mcp/servers.yml') | from_yaml }}"
+    mcp_servers: "{{ lookup('file', cybervm_config ~ '/mcp/servers.yml') | from_yaml }}"
 
 # Local (stdio) servers are the ones we install a package + browser for and
-# register as a `command` with each client. Remote servers (e.g. cyberai-rag)
+# register as a `command` with each client. Remote servers (e.g. cybervm-rag)
 # carry no package and are configured entirely in the client templates.
 - name: Resolve local (stdio) MCP servers
   set_fact:
@@ -42,14 +42,14 @@
       newer Node from nodesource.io in the common role, or pin it here.
 
 - name: Ensure MCP state dir
-  file: { path: /etc/cyberai, state: directory, mode: "0755" }
+  file: { path: /etc/cybervm, state: directory, mode: "0755" }
 
 # The installer is static shell; the manifest data lives in a separate plan file
 # so the same script works during golden build and inside a clone.
-- name: Install cyberai-mcp-install
+- name: Install cybervm-mcp-install
   template:
     src: mcp-install.sh.j2
-    dest: /usr/local/bin/cyberai-mcp-install
+    dest: /usr/local/bin/cybervm-mcp-install
     owner: root
     group: root
     mode: "0755"
@@ -57,16 +57,16 @@
 - name: Render MCP install plan
   template:
     src: mcp-install.plan.j2
-    dest: /etc/cyberai/mcp-install.plan
+    dest: /etc/cybervm/mcp-install.plan
     owner: root
     group: root
     mode: "0644"
 
 - name: Bake MCP servers (npm package + browser + OS deps)
-  command: /usr/local/bin/cyberai-mcp-install bake
+  command: /usr/local/bin/cybervm-mcp-install bake
   # `bake` is a no-op when the browsers marker already exists, so re-running this
   # role on an existing golden does not re-download. Force it on the host with
-  # `./cyberai golden build --force`. Inside a live clone use `cyberai mcp update`.
+  # `./cybervm golden build --force`. Inside a live clone use `cybervm mcp update`.
 
 - name: Install MCP launcher wrappers
   template:
@@ -79,7 +79,7 @@
   loop_control: { loop_var: s, label: "{{ s.name }}" }
 
 # ---------------------------------------------------------------- client wiring
-# NOTE: the cyberai-rag entries in these two templates were carried over verbatim
+# NOTE: the cybervm-rag entries in these two templates were carried over verbatim
 # from rag_client so that moving ownership here changed nothing about RAG.
 
 - name: OpenCode config (providers + RAG MCP + local MCP servers)
@@ -100,10 +100,10 @@
   become: false
   template:
     src: claude-mcp.json.j2
-    dest: "/home/{{ vm_user }}/.config/cyberai/claude-mcp.json"
+    dest: "/home/{{ vm_user }}/.config/cybervm/claude-mcp.json"
     mode: "0644"
 
-# Claude Code does NOT read ~/.config/cyberai/claude-mcp.json, and ~/.claude.json
+# Claude Code does NOT read ~/.config/cybervm/claude-mcp.json, and ~/.claude.json
 # holds onboarding state, caches and experiment flags that must never be
 # overwritten by a template. The only safe path is the CLI, at user scope.
 # remove-then-add makes re-running the role idempotent.

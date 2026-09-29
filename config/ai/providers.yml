@@ -1,4 +1,4 @@
-# Endpoints ONLY. No API keys here (keys live in ~/.config/cyberai/secrets.env).
+# Endpoints ONLY. No API keys here (keys live in ~/.config/cybervm/secrets.env).
 local:
   ollama:
     base_url: "http://192.168.57.1:11434/v1"   # OpenAI-compatible

@@ -1,8 +1,8 @@
 # lib/pins.sh — verify/refresh external-download pins so a stale pin can never
 # kill a long build half-way. Currently covers Burp BApp extensions.
 #
-#   cyberai pins check   [burp]  — compare lock serials vs live store, exit 0/1
-#   cyberai pins refresh [burp]  — re-pin drifted/serial+hash to current, no-op if fresh
+#   cybervm pins check   [burp]  — compare lock serials vs live store, exit 0/1
+#   cybervm pins refresh [burp]  — re-pin drifted/serial+hash to current, no-op if fresh
 #
 # Lock: config/burp/extensions.lock.yml — each BApp pins `serial` + `sha256`;
 # url is the serial-versioned PortSwigger download path .../download/<uuid>/<serial>.
@@ -10,19 +10,19 @@
 pins_dispatch() { local sub="${1:-}"; shift || true
   case "$sub" in
     check|refresh) _pins_run "$sub" "${1:-burp}" ;;
-    *) die "usage: cyberai pins check|refresh <burp>" ;;
+    *) die "usage: cybervm pins check|refresh <burp>" ;;
   esac; }
 
-_pins_lock() { echo "$CYBERAI_HOME/config/burp/extensions.lock.yml"; }
+_pins_lock() { echo "$CYBERVM_HOME/config/burp/extensions.lock.yml"; }
 
 # Compare each BApp's pinned serial against the live storefront page and, when
 # refreshing, re-download + re-hash the drifted ones and rewrite the lock.
 _pins_run() { # <check|refresh> <scope>
   local mode="$1" scope="$2"
-  [ "$scope" = burp ] || die "usage: cyberai pins $mode <burp>"
+  [ "$scope" = burp ] || die "usage: cybervm pins $mode <burp>"
   local lock; lock="$(_pins_lock)"
   [ -f "$lock" ] || die "no such lock file: $lock"
-  log "cyberai pins $mode (burp) — querying portswigger.net BApp store…"
+  log "cybervm pins $mode (burp) — querying portswigger.net BApp store…"
   local tmp; tmp=$(mktemp)
   python3 - "$mode" "$lock" <<'PY'
 import sys, re, hashlib, urllib.request, yaml
@@ -115,7 +115,7 @@ PY
   rm -f "$tmp"
   if [ "$mode" = check ]; then
     if [ "$rc" -eq 0 ]; then ok "All Burp extension pins are current."
-    else warn "Stale Burp extension pins. Run: ./cyberai pins refresh burp"; fi
+    else warn "Stale Burp extension pins. Run: ./cybervm pins refresh burp"; fi
   elif [ "$mode" = refresh ] && [ "$rc" -eq 0 ]; then
     ok "Burp extension pins refreshed."
   fi

@@ -1,7 +1,7 @@
 # lib/ai.sh — manage/benchmark host-native Ollama models.
 
-OLLAMA_API() { echo "http://${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}"; }
-_oll() { OLLAMA_HOST="${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}" ollama "$@"; }
+OLLAMA_API() { echo "http://${CYBERVM_HOST_IP}:${CYBERVM_OLLAMA_PORT}"; }
+_oll() { OLLAMA_HOST="${CYBERVM_HOST_IP}:${CYBERVM_OLLAMA_PORT}" ollama "$@"; }
 
 ai_dispatch() { local sub="${1:?pull|list|rm|run|bench|tune|untune}"; shift || true
   case "$sub" in
@@ -10,25 +10,25 @@ ai_dispatch() { local sub="${1:?pull|list|rm|run|bench|tune|untune}"; shift || t
     rm)     _oll rm "${1:?model}" ;;
     run)    _ai_run "$@" ;;
     bench)  _ai_bench "$@" ;;
-    tune)   exec "$CYBERAI_HOME/lib/local-llm-setup.sh"  "$@" ;;
-    untune) exec "$CYBERAI_HOME/lib/local-llm-remove.sh" "$@" ;;
-    *) die "usage: cyberai ai pull|list|rm|run|bench|tune|untune" ;;
+    tune)   exec "$CYBERVM_HOME/lib/local-llm-setup.sh"  "$@" ;;
+    untune) exec "$CYBERVM_HOME/lib/local-llm-remove.sh" "$@" ;;
+    *) die "usage: cybervm ai pull|list|rm|run|bench|tune|untune" ;;
   esac; }
 
 # Send a prompt to a host-native model and stream the reply.
-#   cyberai ai run "what does nmap -sV do?"            # default model
-#   cyberai ai run qwen3:1.7b "what does nmap -sV do?" # explicit model
-# A leading model:tag argument selects the model; otherwise CYBERAI_AI_MODEL
+#   cybervm ai run "what does nmap -sV do?"            # default model
+#   cybervm ai run qwen3:1.7b "what does nmap -sV do?" # explicit model
+# A leading model:tag argument selects the model; otherwise CYBERVM_AI_MODEL
 # (default qwen2.5:3b-instruct) is used. qwen3 "thinking" is disabled for speed.
 _ai_run() {
-  local model="${CYBERAI_AI_MODEL:-qwen2.5:3b-instruct}"
+  local model="${CYBERVM_AI_MODEL:-qwen2.5:3b-instruct}"
   # A model:tag is a single whitespace-free token; anything with a space is prompt text.
   case "${1:-}" in
     *[[:space:]]*) ;;            # has spaces -> it's the prompt, keep default model
     *:*) model="$1"; shift ;;    # bare model:tag -> use it as the model
   esac
   local prompt="$*"
-  [ -n "$prompt" ] || die "usage: cyberai ai run [model:tag] <prompt>"
+  [ -n "$prompt" ] || die "usage: cybervm ai run [model:tag] <prompt>"
   curl -fsSN "$(OLLAMA_API)/api/generate" \
     -d "$(jq -nc --arg m "$model" --arg p "$prompt" \
         '{model:$m,prompt:$p,stream:true,think:false,options:{temperature:0}}')" \
@@ -41,12 +41,12 @@ _ai_run() {
 _ai_pull() {
   if [ $# -gt 0 ]; then _oll pull "$1"; return; fi
   while read -r m; do [ -n "$m" ] && _oll pull "$m"; done \
-    < <(yq_get "$CYBERAI_HOME/config/ai/models.yml" '.chat[], .embedding[]')
+    < <(yq_get "$CYBERVM_HOME/config/ai/models.yml" '.chat[], .embedding[]')
 }
 
 _ai_bench() {
   local model="${1:-qwen2.5:3b-instruct}"
-  local out="$CYBERAI_HOME/docs/benchmarks/$(date +%Y-%m-%d)-${model//[:\/]/_}.md"
+  local out="$CYBERVM_HOME/docs/benchmarks/$(date +%Y-%m-%d)-${model//[:\/]/_}.md"
   mkdir -p "$(dirname "$out")"
   local prompts=(
     "Explain this nmap result and what to probe next: 22/tcp open ssh; 80/tcp open http; 3306/tcp open mysql."

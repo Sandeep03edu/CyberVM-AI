@@ -1121,13 +1121,13 @@ Don't put the VM inside random directories.
 Create:
 
 ```bash
-mkdir -p ~/CyberAI/{iso,images,backups,scripts}
+mkdir -p ~/CyberVM/{iso,images,backups,scripts}
 ```
 
 We'll eventually have something like:
 
 ```text
-~/CyberAI/
+~/CyberVM/
 ├── iso/
 │   └── kali-linux.iso
 │
@@ -1155,7 +1155,7 @@ Download it from Kali's official download page and verify its SHA256 checksum be
 Then put it here:
 
 ```text
-~/CyberAI/iso/kali-linux.iso
+~/CyberVM/iso/kali-linux.iso
 ```
 
 I'm deliberately not hard-coding the filename because Kali's current release filename changes.
@@ -1814,7 +1814,7 @@ If something goes wrong, restore the snapshot.
 Eventually I'll have you create:
 
 ```text
-~/CyberAI/scripts/
+~/CyberVM/scripts/
 ├── start.sh
 ├── stop.sh
 ├── new-lab.sh
@@ -2113,7 +2113,7 @@ But there is an important second layer:
 So your storage could eventually look like:
 
 ```text
-CyberAI/
+CyberVM/
 │
 ├── factory/
 │   ├── packer/
@@ -2503,7 +2503,7 @@ That's exactly the kind of separation you're looking for.
 I'd make your authoritative knowledge source something like:
 
 ```text
-CyberAI-RAG/
+CyberVM-RAG/
 │
 ├── sources/
 │   ├── owasp/
@@ -2554,7 +2554,7 @@ Suppose tomorrow you're on another computer.
 Take:
 
 ```text
-CyberAI SSD
+CyberVM SSD
 │
 ├── VMs/
 │   ├── kali-qwen.ova
@@ -3212,7 +3212,7 @@ The system should be built as a **portable, reproducible Cybersecurity AI platfo
 - VM images can be cloned/exported/imported.
 - The entire environment can be rebuilt from configuration.
 
-I would call the overall design something like **CyberAI Platform**.
+I would call the overall design something like **CyberVM Platform**.
 
 ---
 
@@ -3255,7 +3255,7 @@ The most important change is this:
 But underneath those VMs:
 
 ```text
-                 CYBERAI IMAGE FACTORY
+                 CYBERVM IMAGE FACTORY
                          │
                  ┌───────┴───────┐
                  │               │
@@ -3344,7 +3344,7 @@ Examples:
 OpenCode
 Codex CLI
 Claude Code
-your own CyberAI agent
+your own CyberVM agent
 ```
 
 These must not be confused.
@@ -3431,13 +3431,13 @@ Kali-Codex
 I'd have:
 
 ```text
-Kali-CyberAI
+Kali-CyberVM
 ```
 
 with:
 
 ```text
-                    Kali-CyberAI
+                    Kali-CyberVM
                          │
         ┌────────────────┼─────────────────┐
         │                │                 │
@@ -3634,7 +3634,7 @@ This is ideal:
 
 ```text
 Host:
-~/CyberAI/transfer/
+~/CyberVM/transfer/
 
         ↕
 
@@ -4323,7 +4323,7 @@ Something like:
 ```text
 External SSD
 │
-├── CyberAI/
+├── CyberVM/
 │   ├── factory/
 │   ├── images/
 │   ├── models/
@@ -4358,7 +4358,7 @@ So:
 
 ```text
 External NVMe SSD
-    = active CyberAI workspace
+    = active CyberVM workspace
 
 External HDD
     = backup/archive
@@ -4373,10 +4373,10 @@ is a much better arrangement.
 For portability:
 
 ```text
-CyberAI SSD
+CyberVM SSD
 │
 ├── images/
-│   ├── kali-cyberai.ova
+│   ├── kali-cybervm.ova
 │   ├── rag.ova
 │   └── ...
 │
@@ -4446,7 +4446,7 @@ Otherwise six months later you won't know what changed.
 I would build this:
 
 ```text
-CyberAI/
+CyberVM/
 │
 ├── README.md
 │
@@ -4510,61 +4510,61 @@ This is the part I want us to build **before** installing random things into Kal
 ### Build a standard Kali
 
 ```bash
-./cyberai build kali
+./cybervm build kali
 ```
 
 ### Build Kali + local AI
 
 ```bash
-./cyberai build kali --profile ai-local
+./cybervm build kali --profile ai-local
 ```
 
 ### Build Kali + OpenCode
 
 ```bash
-./cyberai build kali --profile opencode
+./cybervm build kali --profile opencode
 ```
 
 ### Build the multi-AI environment
 
 ```bash
-./cyberai build kali --profile multi-ai
+./cybervm build kali --profile multi-ai
 ```
 
 ### Build RAG
 
 ```bash
-./cyberai build rag
+./cybervm build rag
 ```
 
 ### Update RAG
 
 ```bash
-./cyberai rag update
+./cybervm rag update
 ```
 
 ### Start offline
 
 ```bash
-./cyberai start kali --network isolated
+./cybervm start kali --network isolated
 ```
 
 ### Start with Internet
 
 ```bash
-./cyberai start kali --network nat
+./cybervm start kali --network nat
 ```
 
 ### Start host-only transfer
 
 ```bash
-./cyberai start kali --network host-only
+./cybervm start kali --network host-only
 ```
 
 ### Explicitly expose it
 
 ```bash
-./cyberai start kali --network bridged
+./cybervm start kali --network bridged
 ```
 
 That last command should produce a prominent warning/confirmation.
@@ -4647,7 +4647,7 @@ Ubuntu
   ↓
 VirtualBox
   ↓
-CyberAI VMs
+CyberVM VMs
 ```
 
 Future:
@@ -4657,7 +4657,7 @@ Windows
   ↓
 VirtualBox
   ↓
-same CyberAI OVA
+same CyberVM OVA
 ```
 
 The **VM itself stays essentially the same**.
@@ -4700,7 +4700,7 @@ That creates duplication.
 Instead:
 
 ```text
-Kali-CyberAI
+Kali-CyberVM
 │
 ├── local model support
 ├── cloud API support
@@ -4781,7 +4781,7 @@ There is **one decision I recommend we make before touching the machine**:
 
 ### Don't install anything yet.
 
-First we should create the **CyberAI source-of-truth repository and architecture**, because that becomes the foundation for Packer/Ansible and prevents us from repeating work.
+First we should create the **CyberVM source-of-truth repository and architecture**, because that becomes the foundation for Packer/Ansible and prevents us from repeating work.
 
 Then we'll build the **first minimal Kali image**, test it, and only then add the security tools, Burp, RAG, and AI layers one at a time.
 
@@ -4823,7 +4823,7 @@ I’ll turn the architecture into a beginner-friendly build sequence: host prepa
 >
 > Worked for 8s
 
-Yes. Given that you are doing this for the first time, I recommend **not trying to build the entire CyberAI platform in one shot**. We will build it in controlled stages, verify each stage, and only move forward when the previous stage works.
+Yes. Given that you are doing this for the first time, I recommend **not trying to build the entire CyberVM platform in one shot**. We will build it in controlled stages, verify each stage, and only move forward when the previous stage works.
 
 The end result will look like this:
 
@@ -4875,7 +4875,7 @@ We will build this in **15 phases**.
 | 1 | Prepare Ubuntu host | Low |
 | 2 | Prepare external SSD | Low |
 | 3 | Install/configure VirtualBox | Low |
-| 4 | Create CyberAI project repository | None |
+| 4 | Create CyberVM project repository | None |
 | 5 | Download & verify Kali | Low |
 | 6 | Create first Kali VM | Low |
 | 7 | Create golden Kali image | Medium |
@@ -4899,7 +4899,7 @@ The RAG and AI parts depend on having the VM architecture correct first.
 Eventually your external SSD should contain something approximately like:
 
 ```text
-CyberAI/
+CyberVM/
 │
 ├── README.md
 ├── VERSION
@@ -5015,7 +5015,7 @@ Examples:
 OpenCode
 Codex
 Claude Code
-your own CyberAI agent
+your own CyberVM agent
 ```
 
 So:
@@ -5032,7 +5032,7 @@ So:
              AI CLIENT
         ┌──────────┼─────────┐
         ▼          ▼         ▼
-    OpenCode     Codex    CyberAI
+    OpenCode     Codex    CyberVM
 ```
 
 This is why **OpenCode must not become the foundation of the entire system**.
@@ -5305,7 +5305,7 @@ The architecture itself remains portable.
 
 ---
 
-# 7. Create the CyberAI root
+# 7. Create the CyberVM root
 
 Once the SSD is mounted, identify its path:
 
@@ -5316,31 +5316,31 @@ findmnt
 Suppose it is:
 
 ```text
-/media/$USER/CyberAI-SSD
+/media/$USER/CyberVM-SSD
 ```
 
 Then:
 
 ```bash
-mkdir -p /media/$USER/CyberAI-SSD/CyberAI
+mkdir -p /media/$USER/CyberVM-SSD/CyberVM
 ```
 
 From this point forward I'll call this:
 
 ```text
-$CYBERAI
+$CYBERVM
 ```
 
 You can temporarily set:
 
 ```bash
-export CYBERAI="/media/$USER/CyberAI-SSD/CyberAI"
+export CYBERVM="/media/$USER/CyberVM-SSD/CyberVM"
 ```
 
 Verify:
 
 ```bash
-echo "$CYBERAI"
+echo "$CYBERVM"
 ```
 
 ---
@@ -5382,13 +5382,13 @@ This is important because we don't want your large VM disks filling your Ubuntu 
 Create:
 
 ```bash
-mkdir -p "$CYBERAI/images"
+mkdir -p "$CYBERVM/images"
 ```
 
 Then:
 
 ```bash
-VBoxManage setproperty machinefolder "$CYBERAI/images"
+VBoxManage setproperty machinefolder "$CYBERVM/images"
 ```
 
 Check:
@@ -5401,7 +5401,7 @@ You want:
 
 ```text
 Default machine folder:
-.../CyberAI/images
+.../CyberVM/images
 ```
 
 ---
@@ -5411,7 +5411,7 @@ Default machine folder:
 Go into your project:
 
 ```bash
-cd "$CYBERAI"
+cd "$CYBERVM"
 ```
 
 Create directories:
@@ -5451,7 +5451,7 @@ docs/benchmarks
 Verify:
 
 ```bash
-find "$CYBERAI" -maxdepth 2 -type d | sort
+find "$CYBERVM" -maxdepth 2 -type d | sort
 ```
 
 ---
@@ -5467,7 +5467,7 @@ sudo apt install -y git
 Then:
 
 ```bash
-cd "$CYBERAI"
+cd "$CYBERVM"
 git init
 ```
 
@@ -5522,7 +5522,7 @@ Then:
 
 ```bash
 git add .gitignore
-git commit -m "Initial CyberAI repository"
+git commit -m "Initial CyberVM repository"
 ```
 
 ---
@@ -5896,7 +5896,7 @@ That is much more controllable.
 On the host:
 
 ```bash
-cd "$CYBERAI"
+cd "$CYBERVM"
 nano tools/apt.yml
 ```
 
@@ -6049,7 +6049,7 @@ Do not use it as your normal working machine.
 Rename it:
 
 ```text
-CyberAI-Kali-Golden
+CyberVM-Kali-Golden
 ```
 
 Take a snapshot:
@@ -6061,7 +6061,7 @@ GOLDEN-CLEAN
 The purpose is:
 
 ```text
-CyberAI-Kali-Golden
+CyberVM-Kali-Golden
           │
           ├── snapshot GOLDEN-CLEAN
           │
@@ -6162,7 +6162,7 @@ packer {
 source "virtualbox-ovf" "kali" {
   source_path = var.kali_ova
 
-  vm_name = "CyberAI-Kali-Build"
+  vm_name = "CyberVM-Kali-Build"
 
   cpus   = 6
   memory = 16384
@@ -6211,7 +6211,7 @@ Eventually:
 
 ```yaml
 ---
-- name: Configure CyberAI Kali
+- name: Configure CyberVM Kali
   hosts: all
   become: true
 
@@ -6421,25 +6421,25 @@ bridged
 So the workflow becomes:
 
 ```bash
-./cyberai start kali --network isolated
+./cybervm start kali --network isolated
 ```
 
 or:
 
 ```bash
-./cyberai start kali --network nat
+./cybervm start kali --network nat
 ```
 
 or:
 
 ```bash
-./cyberai start kali --network host-only
+./cybervm start kali --network host-only
 ```
 
 or, only when deliberately needed:
 
 ```bash
-./cyberai start kali --network bridged
+./cybervm start kali --network bridged
 ```
 
 ---
@@ -6455,7 +6455,7 @@ I recommend two mechanisms.
 Host:
 
 ```text
-CyberAI/transfer/
+CyberVM/transfer/
 ```
 
 Guest:
@@ -6483,7 +6483,7 @@ Then unmount it.
 Host:
 
 ```bash
-cd "$CYBERAI/transfer"
+cd "$CYBERVM/transfer"
 python3 -m http.server 8000
 ```
 
@@ -6899,35 +6899,35 @@ Then AI answers with provenance.
 We eventually want these commands:
 
 ```bash
-./cyberai list
+./cybervm list
 ```
 
 ```bash
-./cyberai create kali-ctf-01
+./cybervm create kali-ctf-01
 ```
 
 ```bash
-./cyberai start kali-ctf-01 --network isolated
+./cybervm start kali-ctf-01 --network isolated
 ```
 
 ```bash
-./cyberai start kali-ctf-01 --network nat
+./cybervm start kali-ctf-01 --network nat
 ```
 
 ```bash
-./cyberai snapshot kali-ctf-01 checkpoint-01
+./cybervm snapshot kali-ctf-01 checkpoint-01
 ```
 
 ```bash
-./cyberai restore kali-ctf-01 checkpoint-01
+./cybervm restore kali-ctf-01 checkpoint-01
 ```
 
 ```bash
-./cyberai stop kali-ctf-01
+./cybervm stop kali-ctf-01
 ```
 
 ```bash
-./cyberai destroy kali-ctf-01
+./cybervm destroy kali-ctf-01
 ```
 
 Destroying:
@@ -7030,7 +7030,7 @@ Every release gets a version.
 For example:
 
 ```text
-CyberAI-Kali-2026.09.01
+CyberVM-Kali-2026.09.01
 ```
 
 Then:
@@ -7038,8 +7038,8 @@ Then:
 ```text
 images/
 └── releases/
-    ├── CyberAI-Kali-2026.09.01.ova
-    ├── CyberAI-Kali-2026.09.01.sha256
+    ├── CyberVM-Kali-2026.09.01.ova
+    ├── CyberVM-Kali-2026.09.01.sha256
     └── manifest.json
 ```
 
@@ -7067,9 +7067,9 @@ This makes your environment reproducible.
 Your SSD eventually looks like:
 
 ```text
-CyberAI-SSD
+CyberVM-SSD
 │
-└── CyberAI
+└── CyberVM
     │
     ├── factory/
     │
@@ -7169,9 +7169,9 @@ Connect SSD.
 Then:
 
 ```text
-CyberAI/
+CyberVM/
    images/releases/
-       CyberAI-Kali-2026.09.01.ova
+       CyberVM-Kali-2026.09.01.ova
 ```
 
 Import:
@@ -7191,7 +7191,7 @@ Computer A
     │
     └── External SSD
            │
-           └── CyberAI
+           └── CyberVM
                  │
                  └── OVA
 
@@ -7199,7 +7199,7 @@ Computer B
     │
     └── External SSD
            │
-           └── same CyberAI
+           └── same CyberVM
 ```
 
 VirtualBox supports VM import/export, and Packer's VirtualBox builders also support OVA/OVF workflows. ([HashiCorp Developer](https://developer.hashicorp.com/packer/integrations/hashicorp/virtualbox/latest/components/builder/ovf?utm_source=chatgpt.com))
@@ -7225,7 +7225,7 @@ both provide:
 ```text
 VirtualBox
 external storage
-CyberAI factory
+CyberVM factory
 ```
 
 while:
@@ -7252,67 +7252,67 @@ You should eventually be able to do:
 ### Build
 
 ```bash
-./cyberai build kali
+./cybervm build kali
 ```
 
 ### Build local-AI profile
 
 ```bash
-./cyberai build kali --profile ai-local
+./cybervm build kali --profile ai-local
 ```
 
 ### Build cloud-AI profile
 
 ```bash
-./cyberai build kali --profile ai-cloud
+./cybervm build kali --profile ai-cloud
 ```
 
 ### Multi-AI
 
 ```bash
-./cyberai build kali --profile multi-ai
+./cybervm build kali --profile multi-ai
 ```
 
 ### RAG
 
 ```bash
-./cyberai build rag
+./cybervm build rag
 ```
 
 ### Update RAG
 
 ```bash
-./cyberai rag update
+./cybervm rag update
 ```
 
 ### Start isolated
 
 ```bash
-./cyberai start kali-ctf-01 --network isolated
+./cybervm start kali-ctf-01 --network isolated
 ```
 
 ### Start Internet
 
 ```bash
-./cyberai start kali-ctf-01 --network nat
+./cybervm start kali-ctf-01 --network nat
 ```
 
 ### Start host-only
 
 ```bash
-./cyberai start kali-ctf-01 --network host-only
+./cybervm start kali-ctf-01 --network host-only
 ```
 
 ### Snapshot
 
 ```bash
-./cyberai snapshot kali-ctf-01
+./cybervm snapshot kali-ctf-01
 ```
 
 ### Destroy
 
 ```bash
-./cyberai destroy kali-ctf-01
+./cybervm destroy kali-ctf-01
 ```
 
 ---
@@ -7509,9 +7509,9 @@ Ubuntu
   │
   ├── VirtualBox
   │
-  └── CyberAI SSD
+  └── CyberVM SSD
           │
-          └── CyberAI project
+          └── CyberVM project
                   │
                   └── Kali VM
 ```
@@ -7664,7 +7664,7 @@ Follow this **exact order**:
        ↓
 [05] Format/mount SSD
        ↓
-[06] Create CyberAI directory
+[06] Create CyberVM directory
        ↓
 [07] Install VirtualBox
        ↓
@@ -7672,7 +7672,7 @@ Follow this **exact order**:
        ↓
 [09] Install Git
        ↓
-[10] Create CyberAI repository
+[10] Create CyberVM repository
        ↓
 [11] Install Packer
        ↓
@@ -7927,17 +7927,17 @@ Once those are done, **the next step is the external SSD + VirtualBox setup**, a
 ## Prompt:
 9/19/2026, 10:49:39 PM
 
-Hey currently I do not have the SSD and I will be performing all setups in my directory sandeep03edu-ubuntu@sandeep03edu-ubuntu:~/Personal/CyberAIKaliVM$
+Hey currently I do not have the SSD and I will be performing all setups in my directory sandeep03edu-ubuntu@sandeep03edu-ubuntu:~/Personal/CyberVM-AI$
 
 So can you update the plan in a way that we can perform all setups in my Linux machine as of now and then move or shift that to SSD in future which can be an additional step
 
 ## Response:
 9/19/2026, 10:49:41 PM
 
-Absolutely. **Do not wait for the SSD.** We can build the entire CyberAI lab under:
+Absolutely. **Do not wait for the SSD.** We can build the entire CyberVM lab under:
 
 ```text
-~/Personal/CyberAIKaliVM
+~/Personal/CyberVM-AI
 ```
 
 and later make the SSD a **storage migration step**, not a rebuild.
@@ -7953,7 +7953,7 @@ For now:
 ```text
 Ubuntu internal NVMe
 │
-└── ~/Personal/CyberAIKaliVM/
+└── ~/Personal/CyberVM-AI/
     │
     ├── factory/          ← source/configuration
     ├── profiles/         ← VM profiles
@@ -7974,7 +7974,7 @@ Later:
 ```text
 External SSD
 │
-└── CyberAIKaliVM/
+└── CyberVM-AI/
     │
     ├── factory/
     ├── profiles/
@@ -8009,7 +8009,7 @@ Later we'll explicitly move the large components:
 ```text
 Current:
 
-~/Personal/CyberAIKaliVM/
+~/Personal/CyberVM-AI/
     images/
     labs/
     models/
@@ -8017,7 +8017,7 @@ Current:
 
 Future:
 
-/media/.../CyberAIKaliVM/
+/media/.../CyberVM-AI/
     images/
     labs/
     models/
@@ -8039,7 +8039,7 @@ anywhere.
 We're going to split the project into:
 
 ```text
-                    CyberAIKaliVM
+                    CyberVM-AI
                           │
              ┌────────────┴────────────┐
              │                         │
@@ -8063,7 +8063,7 @@ This is what makes the future SSD migration easy.
 You already have:
 
 ```text
-~/Personal/CyberAIKaliVM
+~/Personal/CyberVM-AI
 ```
 
 Let's make that the permanent logical root.
@@ -8071,7 +8071,7 @@ Let's make that the permanent logical root.
 Open Terminal:
 
 ```bash
-cd ~/Personal/CyberAIKaliVM
+cd ~/Personal/CyberVM-AI
 ```
 
 Verify:
@@ -8083,7 +8083,7 @@ pwd
 You should get:
 
 ```text
-/home/<your-user>/Personal/CyberAIKaliVM
+/home/<your-user>/Personal/CyberVM-AI
 ```
 
 Don't worry about your username being different from examples I use.
@@ -8132,7 +8132,7 @@ Then:
 find . -maxdepth 2 -type d | sort
 ```
 
-You should now see the basic CyberAI structure.
+You should now see the basic CyberVM structure.
 
 ---
 
@@ -8145,21 +8145,21 @@ We will **never hard-code the storage location** into our scripts.
 Create:
 
 ```bash
-nano .cyberai.env
+nano .cybervm.env
 ```
 
 Put:
 
 ```bash
-CYBERAI_ROOT="$HOME/Personal/CyberAIKaliVM"
+CYBERVM_ROOT="$HOME/Personal/CyberVM-AI"
 
-CYBERAI_IMAGES="$CYBERAI_ROOT/images"
-CYBERAI_LABS="$CYBERAI_ROOT/labs"
-CYBERAI_MODELS="$CYBERAI_ROOT/models"
-CYBERAI_RAG="$CYBERAI_ROOT/rag"
-CYBERAI_ARTIFACTS="$CYBERAI_ROOT/artifacts"
-CYBERAI_BACKUPS="$CYBERAI_ROOT/backups"
-CYBERAI_TRANSFER="$CYBERAI_ROOT/transfer"
+CYBERVM_IMAGES="$CYBERVM_ROOT/images"
+CYBERVM_LABS="$CYBERVM_ROOT/labs"
+CYBERVM_MODELS="$CYBERVM_ROOT/models"
+CYBERVM_RAG="$CYBERVM_ROOT/rag"
+CYBERVM_ARTIFACTS="$CYBERVM_ROOT/artifacts"
+CYBERVM_BACKUPS="$CYBERVM_ROOT/backups"
+CYBERVM_TRANSFER="$CYBERVM_ROOT/transfer"
 ```
 
 Save it.
@@ -8167,14 +8167,14 @@ Save it.
 Later, when the SSD arrives, we change essentially this:
 
 ```bash
-CYBERAI_ROOT="/media/.../CyberAIKaliVM"
+CYBERVM_ROOT="/media/.../CyberVM-AI"
 ```
 
 instead of rewriting the whole project.
 
 ---
 
-# PHASE 3 - Don't put `.cyberai.env` into Git
+# PHASE 3 - Don't put `.cybervm.env` into Git
 
 Add it to `.gitignore`:
 
@@ -8186,7 +8186,7 @@ Use:
 
 ```text
 # Local configuration
-.cyberai.env
+.cybervm.env
 
 # Secrets
 .env
@@ -8239,7 +8239,7 @@ __pycache__/
 From:
 
 ```bash
-cd ~/Personal/CyberAIKaliVM
+cd ~/Personal/CyberVM-AI
 ```
 
 run:
@@ -8257,7 +8257,7 @@ git add .gitignore
 Then:
 
 ```bash
-git commit -m "Initial CyberAIKaliVM structure"
+git commit -m "Initial CyberVM-AI structure"
 ```
 
 Your Git repository will contain the **instructions for building the lab**, not necessarily the huge VM disks.
@@ -8345,19 +8345,19 @@ For now, that's okay.
 Rather than letting VirtualBox scatter VMs around your home directory, we'll eventually point it to:
 
 ```text
-~/Personal/CyberAIKaliVM/images
+~/Personal/CyberVM-AI/images
 ```
 
 For example:
 
 ```bash
-mkdir -p ~/Personal/CyberAIKaliVM/images
+mkdir -p ~/Personal/CyberVM-AI/images
 ```
 
 Then:
 
 ```bash
-VBoxManage setproperty machinefolder "$HOME/Personal/CyberAIKaliVM/images"
+VBoxManage setproperty machinefolder "$HOME/Personal/CyberVM-AI/images"
 ```
 
 Check:
@@ -8366,7 +8366,7 @@ Check:
 VBoxManage list systemproperties | grep -i "Default machine folder"
 ```
 
-It should point to your CyberAI directory.
+It should point to your CyberVM directory.
 
 ---
 
@@ -8385,7 +8385,7 @@ Instead:
 ```text
 VirtualBox
     ↓
-CyberAI root
+CyberVM root
     ↓
 images/
 ```
@@ -8423,21 +8423,21 @@ Kali
 Use:
 
 ```text
-CyberAI-Kali-Golden
+CyberVM-Kali-Golden
 ```
 
 Later:
 
 ```text
-CyberAI-Kali-Work-01
-CyberAI-Kali-CTF-01
-CyberAI-Kali-Research-01
+CyberVM-Kali-Work-01
+CyberVM-Kali-CTF-01
+CyberVM-Kali-Research-01
 ```
 
 RAG:
 
 ```text
-CyberAI-RAG
+CyberVM-RAG
 ```
 
 This will become important once you have multiple VMs.
@@ -8449,7 +8449,7 @@ This will become important once you have multiple VMs.
 Initially:
 
 ```text
-~/Personal/CyberAIKaliVM/
+~/Personal/CyberVM-AI/
 │
 ├── images/
 │   ├── golden/
@@ -8517,7 +8517,7 @@ For the initial baseline, we'll use Kali's purpose-specific metapackages rather 
 Once the VM is correct:
 
 ```text
-CyberAI-Kali-Golden
+CyberVM-Kali-Golden
         │
         ▼
 GOLDEN-CLEAN
@@ -8538,10 +8538,10 @@ You simply don't use it for actual work.
 Clone:
 
 ```text
-CyberAI-Kali-Golden
+CyberVM-Kali-Golden
         │
         ▼
-CyberAI-Kali-Work-01
+CyberVM-Kali-Work-01
 ```
 
 Now:
@@ -8555,7 +8555,7 @@ Golden
 Work only inside:
 
 ```text
-CyberAI-Kali-Work-01
+CyberVM-Kali-Work-01
 ```
 
 ---
@@ -8746,7 +8746,7 @@ in the project root.
 For example:
 
 ```text
-~/Personal/CyberAIKaliVM/transfer/
+~/Personal/CyberVM-AI/transfer/
 ```
 
 For temporary transfers we can use:
@@ -8766,7 +8766,7 @@ VirtualBox supports transient shared folders that disappear when the VM powers o
 The RAG VM will initially live here:
 
 ```text
-~/Personal/CyberAIKaliVM/
+~/Personal/CyberVM-AI/
 └── rag/
 ```
 
@@ -8774,7 +8774,7 @@ Eventually:
 
 ```text
 External SSD
-└── CyberAIKaliVM/
+└── CyberVM-AI/
     └── rag/
 ```
 
@@ -8815,7 +8815,7 @@ Clients:
 OpenCode
 Codex
 Claude tooling
-custom CyberAI client
+custom CyberVM client
 ```
 
 The architecture remains:
@@ -8839,13 +8839,13 @@ This becomes a **separate future phase**.
 Suppose your SSD mounts as:
 
 ```text
-/media/sandeep/CyberAI-SSD
+/media/sandeep/CyberVM-SSD
 ```
 
 We'll create:
 
 ```text
-/media/sandeep/CyberAI-SSD/CyberAIKaliVM
+/media/sandeep/CyberVM-SSD/CyberVM-AI
 ```
 
 Then shut down all VMs.
@@ -8853,13 +8853,13 @@ Then shut down all VMs.
 Copy:
 
 ```text
-~/Personal/CyberAIKaliVM/
+~/Personal/CyberVM-AI/
 ```
 
 to:
 
 ```text
-/media/sandeep/CyberAI-SSD/CyberAIKaliVM/
+/media/sandeep/CyberVM-SSD/CyberVM-AI/
 ```
 
 But we **will not blindly copy everything**.
@@ -8896,13 +8896,13 @@ These are small enough to keep backed up in Git.
 Current:
 
 ```bash
-CYBERAI_ROOT="$HOME/Personal/CyberAIKaliVM"
+CYBERVM_ROOT="$HOME/Personal/CyberVM-AI"
 ```
 
 Future:
 
 ```bash
-CYBERAI_ROOT="/media/sandeep/CyberAI-SSD/CyberAIKaliVM"
+CYBERVM_ROOT="/media/sandeep/CyberVM-SSD/CyberVM-AI"
 ```
 
 Then:
@@ -8929,13 +8929,13 @@ After moving the project to the SSD:
 
 ```text
 SSD
-└── CyberAIKaliVM
+└── CyberVM-AI
 ```
 
 we can have:
 
 ```text
-~/Personal/CyberAIKaliVM
+~/Personal/CyberVM-AI
         │
         └── symlink
               ↓
@@ -8945,7 +8945,7 @@ we can have:
 Then your scripts can continue using:
 
 ```text
-~/Personal/CyberAIKaliVM
+~/Personal/CyberVM-AI
 ```
 
 while the actual files are on the SSD.
@@ -8953,9 +8953,9 @@ while the actual files are on the SSD.
 For example:
 
 ```bash
-mv ~/Personal/CyberAIKaliVM ~/Personal/CyberAIKaliVM-old
-ln -s /media/sandeep/CyberAI-SSD/CyberAIKaliVM \
-      ~/Personal/CyberAIKaliVM
+mv ~/Personal/CyberVM-AI ~/Personal/CyberVM-AI-old
+ln -s /media/sandeep/CyberVM-SSD/CyberVM-AI \
+      ~/Personal/CyberVM-AI
 ```
 
 **But don't do this now.**
@@ -9011,7 +9011,7 @@ The complete lifecycle is now:
      Ubuntu internal NVMe
               │
               ▼
-~/Personal/CyberAIKaliVM
+~/Personal/CyberVM-AI
               │
        ┌──────┴───────┐
        ▼              ▼
@@ -9046,7 +9046,7 @@ The complete lifecycle is now:
        migrate large data
               │
               ▼
-       update CYBERAI_ROOT
+       update CYBERVM_ROOT
               │
               ▼
       verify everything
@@ -9100,7 +9100,7 @@ First let's establish the host correctly.
 Run these:
 
 ```bash
-cd ~/Personal/CyberAIKaliVM
+cd ~/Personal/CyberVM-AI
 ```
 
 ```bash
@@ -9141,7 +9141,7 @@ If `packer`, `ansible`, or `VBoxManage` says **command not found**, that's compl
 
 **Don't start installing random packages yet.**
 
-Send me the output of those commands. From there, we'll proceed with **Stage 1: preparing your existing Ubuntu machine and this exact `~/Personal/CyberAIKaliVM` directory**, then we'll install VirtualBox and create the first Kali VM. The SSD becomes a later migration stage rather than something that blocks us now.
+Send me the output of those commands. From there, we'll proceed with **Stage 1: preparing your existing Ubuntu machine and this exact `~/Personal/CyberVM-AI` directory**, then we'll install VirtualBox and create the first Kali VM. The SSD becomes a later migration stage rather than something that blocks us now.
 
 
 

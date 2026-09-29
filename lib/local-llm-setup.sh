@@ -4,18 +4,18 @@
 #
 # The drop-in ONLY layers on top of the base /etc/systemd/system/ollama.service
 # written by host-setup; it never edits that file. Reverting is therefore just a
-# matter of deleting the drop-in (see lib/local-llm-remove.sh — cyberai ai untune).
+# matter of deleting the drop-in (see lib/local-llm-remove.sh — cybervm ai untune).
 #
-# Called as: cyberai ai tune [options]
+# Called as: cybervm ai tune [options]
 set -euo pipefail
 
-: "${CYBERAI_HOME:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+: "${CYBERVM_HOME:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 # shellcheck source=lib/common.sh
-source "$CYBERAI_HOME/lib/common.sh"
+source "$CYBERVM_HOME/lib/common.sh"
 
 DROPIN_DIR=/etc/systemd/system/ollama.service.d
-DROPIN="$DROPIN_DIR/cyberai-llm-tune.conf"
-STATE="$CYBERAI_HOME/config/ai/.llm-tune.state"
+DROPIN="$DROPIN_DIR/cybervm-llm-tune.conf"
+STATE="$CYBERVM_HOME/config/ai/.llm-tune.state"
 
 # ── defaults (coexistence-first: leave headroom for a VM running in parallel) ──
 CPU_QUOTA=500        # percent-of-one-core; 500 = up to ~5 cores, ever
@@ -27,10 +27,10 @@ SWAPPINESS=""        # --swappiness N: opt-in
 
 usage() {
   cat <<U
-Usage: cyberai ai tune [options]
+Usage: cybervm ai tune [options]
 
   Applies a REVERSIBLE systemd drop-in so the host Ollama cannot monopolise the
-  machine while a VM runs in parallel. Revert everything with: cyberai ai untune
+  machine while a VM runs in parallel. Revert everything with: cybervm ai untune
 
 Options (all optional; defaults shown):
   --cpu-quota PCT   Max CPU Ollama may use, percent-of-one-core (default ${CPU_QUOTA} = ~5 cores)
@@ -52,19 +52,19 @@ while [ $# -gt 0 ]; do
     --governor)   SET_GOV=1; shift ;;
     --swappiness) SWAPPINESS="${2:?--swappiness needs a value}"; shift 2 ;;
     -h|--help)    usage; exit 0 ;;
-    *) die "unknown option: $1 (see: cyberai ai tune --help)" ;;
+    *) die "unknown option: $1 (see: cybervm ai tune --help)" ;;
   esac
 done
 
 command -v systemctl >/dev/null 2>&1 || die "systemctl not found — this tunes a systemd-managed Ollama."
 systemctl list-unit-files ollama.service >/dev/null 2>&1 \
-  || die "ollama.service not found — run: cyberai host-setup"
+  || die "ollama.service not found — run: cybervm host-setup"
 
 log "Writing Ollama tuning drop-in (CPUQuota=${CPU_QUOTA}%, Nice=${NICE}, keep_alive=${KEEPALIVE}, context=${CONTEXT})…"
 sudo install -d "$DROPIN_DIR"
 sudo tee "$DROPIN" >/dev/null <<CONF
-# Managed by 'cyberai ai tune' (lib/local-llm-setup.sh).
-# This is a drop-in override; delete it to revert (cyberai ai untune).
+# Managed by 'cybervm ai tune' (lib/local-llm-setup.sh).
+# This is a drop-in override; delete it to revert (cybervm ai untune).
 [Service]
 CPUQuota=${CPU_QUOTA}%
 Nice=${NICE}
@@ -105,4 +105,4 @@ fi
 [ -s "$STATE" ] || rm -f "$STATE"
 
 ok "Ollama tuned. Verify: systemctl show ollama -p CPUQuota,Nice,Environment"
-ok "Revert anytime:      cyberai ai untune"
+ok "Revert anytime:      cybervm ai untune"

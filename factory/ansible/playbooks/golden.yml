@@ -1,10 +1,10 @@
 ---
-# Provisions the CyberAI golden Kali image. Reads manifests from ../../config.
-- name: Configure CyberAI Kali golden image
+# Provisions the CyberVM golden Kali image. Reads manifests from ../../config.
+- name: Configure CyberVM Kali golden image
   hosts: golden
   become: true
   vars:
-    cyberai_config: "{{ playbook_dir }}/../../../config"
+    cybervm_config: "{{ playbook_dir }}/../../../config"
     host_ai_ip: "192.168.57.1"
     ollama_port: "11434"
     rag_port: "8088"
@@ -22,7 +22,7 @@
   post_tasks:
     - name: Write guest manifest
       copy:
-        dest: /etc/cyberai/manifest.json
+        dest: /etc/cybervm/manifest.json
         content: |
           {
             "provisioned": "{{ ansible_date_time.iso8601 }}",

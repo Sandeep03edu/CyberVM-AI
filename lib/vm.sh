@@ -17,7 +17,7 @@ _clone_name() { echo "$(platform .vm_names.clone_prefix)$1"; }
 _is_protected() { local n="$1"; [ "$n" = "$(platform .vm_names.base)" ] || [ "$n" = "$(platform .vm_names.golden)" ]; }
 
 # ── per-clone CPU / memory ──────────────────────────────────
-# Sizing is a .vbox property, applied at clone time and by `cyberai resize`. The
+# Sizing is a .vbox property, applied at clone time and by `cybervm resize`. The
 # golden image is therefore never modified and a single golden serves every
 # clone. Names/sizes live in config/platform.yml -> resource_profiles.
 
@@ -66,9 +66,9 @@ _check_cpus() {
 
 # _resolve_resources <default|explicit> <current_ram_mb> [args...]
 # Sets _RES_RAM / _RES_CPUS / _RES_SRC.
-#   default  : falls back to config default_profile (used by `cyberai new`)
+#   default  : falls back to config default_profile (used by `cybervm new`)
 #   explicit : at least one of --ram/--cpus required and nothing is defaulted
-#              off the current VM (used by `cyberai resize`)
+#              off the current VM (used by `cybervm resize`)
 # Precedence: explicit flags > --profile > default_profile.
 # NOTE: this announces its own decisions via log() on stdout, so call it
 # directly - never in a command substitution, or the notice lands in your value.
@@ -90,14 +90,14 @@ _resolve_resources() {
         [ -n "${2:-}" ] || die "--cpus needs a value"
         cpus="$2"; shift 2 ;;
       --net)
-        die "there is no --net on this command - a new clone is always offline. Use 'cyberai start <name> --net <mode>' or 'cyberai net <name> <mode>'." ;;
+        die "there is no --net on this command - a new clone is always offline. Use 'cybervm start <name> --net <mode>' or 'cybervm net <name> <mode>'." ;;
       *)
         die "unknown option: '$1' (valid: --profile P, --ram GB, --cpus N)" ;;
     esac
   done
 
   if [ "$policy" = "explicit" ]; then
-    [ -z "$profile" ] || die "cyberai resize takes --ram/--cpus only, not --profile."
+    [ -z "$profile" ] || die "cybervm resize takes --ram/--cpus only, not --profile."
     want_explicit=true
   fi
 
@@ -147,36 +147,36 @@ _resolve_resources() {
 }
 
 vm_new() {
-  local name="${1:?usage: cyberai new <name> [--profile P] [--ram GB] [--cpus N]}"; shift || true
+  local name="${1:?usage: cybervm new <name> [--profile P] [--ram GB] [--cpus N]}"; shift || true
   _resolve_resources default "" "$@"
   local golden snap vm
   golden="$(platform .vm_names.golden)"; vm="$(_clone_name "$name")"
   vm_exists "$vm" && die "$vm already exists."
-  snap="$(cat "$CYBERAI_HOME/.cyberai.golden-snap" 2>/dev/null)"
+  snap="$(cat "$CYBERVM_HOME/.cybervm.golden-snap" 2>/dev/null)"
   [ -z "$snap" ] && snap=$(VBoxManage snapshot "$golden" list --machinereadable 2>/dev/null | sed -n 's/^SnapshotUUID[^=]*="\([^"]*\)"/\1/p' | tail -1)
-  [ -z "$snap" ] && die "No golden snapshot — run: cyberai golden build"
+  [ -z "$snap" ] && die "No golden snapshot — run: cybervm golden build"
 
   log "Linked-cloning $golden@$snap -> $vm ($_RES_RAM MB / $_RES_CPUS vCPU, $_RES_SRC)…"
   VBoxManage clonevm "$golden" --snapshot "$snap" --options link --name "$vm" \
-    --basefolder "$CYBERAI_LABS" --register
+    --basefolder "$CYBERVM_LABS" --register
   VBoxManage modifyvm "$vm" --memory "$_RES_RAM" --cpus "$_RES_CPUS"
   # clipboard/DnD are already baked into the golden snapshot, but a clone must
   # never inherit a stale posture if golden's config drifted after its snapshot
   # was taken. Apply before the 'clean' snapshot so it is recorded too.
   vm_apply_host_config "$vm"
-  source "$CYBERAI_HOME/lib/net.sh"; net_apply "$vm" offline
+  source "$CYBERVM_HOME/lib/net.sh"; net_apply "$vm" offline
   VBoxManage snapshot "$vm" take clean --description "fresh clone"
-  ok "Created $vm (${_RES_RAM}MB/${_RES_CPUS}vCPU from $_RES_SRC; net: offline). Start: cyberai start $name"
+  ok "Created $vm (${_RES_RAM}MB/${_RES_CPUS}vCPU from $_RES_SRC; net: offline). Start: cybervm start $name"
 }
 
 # Change RAM/vCPU on an existing clone. Both are inert .vbox fields, so this is
 # instant and cannot touch the guest disk. The VM must be off - VirtualBox
 # cannot change these while a guest is running.
 vm_resize() {
-  local name="${1:?usage: cyberai resize <name> [--ram GB] [--cpus N]}"; shift || true
+  local name="${1:?usage: cybervm resize <name> [--ram GB] [--cpus N]}"; shift || true
   local vm; vm="$(_clone_name "$name")"; vm_exists "$vm" || vm="$name"
   vm_exists "$vm" || die "no such VM: $name"
-  _is_protected "$vm" && die "refusing to resize protected VM: $vm (base/golden are not clones; edit config/platform.yml and run 'cyberai golden build')"
+  _is_protected "$vm" && die "refusing to resize protected VM: $vm (base/golden are not clones; edit config/platform.yml and run 'cybervm golden build')"
   local cur; cur="$(_vm_cfg_num "$vm" memory)"
   [ -n "$cur" ] || die "could not read current memory of $vm"
   require_off "$vm"
@@ -193,21 +193,21 @@ vm_start() {
   vm_exists "$vm" || die "no such VM: $name"
   local mode="" type="gui"
   while [ $# -gt 0 ]; do case "$1" in
-    --net) mode="$2"; shift 2;; --headless) type="headless"; shift;; *) die "unknown option for 'cyberai start': $1 (valid: --net offline|airgap|nat|bridged, --headless)";; esac; done
+    --net) mode="$2"; shift 2;; --headless) type="headless"; shift;; *) die "unknown option for 'cybervm start': $1 (valid: --net offline|airgap|nat|bridged, --headless)";; esac; done
   # RAM guard
   local need free; need=$(_vm_cfg_num "$vm" memory)
   free=$(host_free_mb)
-  if [ $((free - need)) -lt "$CYBERAI_HOST_RESERVE_MB" ]; then
-    die "Not enough host RAM: free ${free}MB, VM needs ${need}MB, reserve ${CYBERAI_HOST_RESERVE_MB}MB."
+  if [ $((free - need)) -lt "$CYBERVM_HOST_RESERVE_MB" ]; then
+    die "Not enough host RAM: free ${free}MB, VM needs ${need}MB, reserve ${CYBERVM_HOST_RESERVE_MB}MB."
   fi
   require_off "$vm"
   # Only touch the network when --net was given; otherwise keep the VM's stored
-  # config (e.g. the mode persisted by `cyberai net`).
+  # config (e.g. the mode persisted by `cybervm net`).
   [ -n "$mode" ] && net_apply_wrap "$vm" "$mode"
   VBoxManage startvm "$vm" --type "$type"
   ok "$vm started (net=${mode:-stored})."
 }
-net_apply_wrap() { source "$CYBERAI_HOME/lib/net.sh"; net_apply "$1" "$2"; }
+net_apply_wrap() { source "$CYBERVM_HOME/lib/net.sh"; net_apply "$1" "$2"; }
 
 vm_stop()    { local vm; vm="$(_clone_name "${1:?vm}")"; vm_exists "$vm" || vm="$1"; VBoxManage controlvm "$vm" acpipowerbutton && ok "$vm shutting down."; }
 vm_snapshot(){ local vm; vm="$(_clone_name "${1:?vm}")"; VBoxManage snapshot "$vm" take "${2:?tag}" && ok "snapshot $2 on $vm"; }
@@ -234,17 +234,17 @@ vm_destroy() {
 # Every registered VM belonging to this project: base/golden, plus clones that
 # live under the labs/ or images/ folders. Shared by `vm list` and `doctor` so
 # the listing and the RAM figures can never disagree about what counts as ours.
-_cyberai_vms() {
+_cybervm_vms() {
   VBoxManage list vms | sed -n 's/^"\([^"]*\).*/\1/p' | while read -r n; do
     local cfg; cfg="$(_vm_cfg "$n" CfgFile)"
     case "$n" in
-      CyberAI-Kali-*|kali-*) echo "$n" ;;                       # base/golden + legacy clones
+      CyberVM-Kali-*|kali-*) echo "$n" ;;                       # base/golden + legacy clones
       *) # Unprefixed clones are identified by living under our own roots. Both
-         # roots must actually be set: an empty $CYBERAI_LABS would make the
+         # roots must actually be set: an empty $CYBERVM_LABS would make the
          # pattern below degenerate to "/*" and claim every VM on the host.
-         [ -n "$CYBERAI_LABS" ] && [ -n "$CYBERAI_IMAGES" ] || continue
+         [ -n "$CYBERVM_LABS" ] && [ -n "$CYBERVM_IMAGES" ] || continue
          case "$cfg" in
-           "$CYBERAI_LABS"/*|"$CYBERAI_IMAGES"/*) echo "$n" ;;
+           "$CYBERVM_LABS"/*|"$CYBERVM_IMAGES"/*) echo "$n" ;;
          esac ;;
     esac
   done
@@ -261,13 +261,13 @@ _clone_ram_allocated_mb() {
     mem="$(_vm_cfg_num "$n" memory)"
     [ -n "$mem" ] || continue
     total=$((total + mem))
-  done < <(_cyberai_vms)
+  done < <(_cybervm_vms)
   echo "$total"
 }
 
 vm_list() {
   printf '%-28s %-12s %-9s %-7s %s\n' "VM" "STATE" "RAM" "CPU" "KIND"
-  _cyberai_vms | while read -r n; do
+  _cybervm_vms | while read -r n; do
     [ -n "$n" ] || continue
     local mem cpus
     mem="$(_vm_cfg_num "$n" memory)"; cpus="$(_vm_cfg_num "$n" cpus)"

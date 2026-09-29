@@ -3,12 +3,12 @@
 #
 # NOTE: this role no longer RENDERS the client configs. Rendering moved to the
 # mcp_servers role, which owns all three files so that two roles never write the
-# same path (the second write silently clobbers the first). The cyberai-rag
+# same path (the second write silently clobbers the first). The cybervm-rag
 # entries were carried over verbatim, so RAG behaviour is unchanged.
 - name: Ensure config dirs for AI clients
   become: false
   file: { path: "{{ item }}", state: directory, mode: "0755" }
   loop:
     - "/home/{{ vm_user }}/.config/opencode"
-    - "/home/{{ vm_user }}/.config/cyberai"
+    - "/home/{{ vm_user }}/.config/cybervm"
     - "/home/{{ vm_user }}/.codex"

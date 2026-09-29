@@ -1,10 +1,10 @@
 ---
-# Install a guest-side `cyberai` CLI so a Kali clone can talk to the HOST Ollama
+# Install a guest-side `cybervm` CLI so a Kali clone can talk to the HOST Ollama
 # over the AI plane with the same ergonomics as the host CLI: `ai run|list|pull|rm|opencode`.
-- name: Install guest cyberai CLI (talks to host Ollama over the AI plane)
+- name: Install guest cybervm CLI (talks to host Ollama over the AI plane)
   template:
-    src: cyberai-guest.sh.j2
-    dest: /usr/local/bin/cyberai
+    src: cybervm-guest.sh.j2
+    dest: /usr/local/bin/cybervm
     owner: root
     group: root
     mode: "0755"

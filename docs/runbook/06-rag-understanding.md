@@ -2,7 +2,7 @@
 
 > Read this **before** you start relying on the RAG. `06-rag.md` is the terse
 > operator runbook (the commands). This file explains the *mechanics* — what
-> actually happened when you ran `cyberai rag update`, what got created on disk,
+> actually happened when you ran `cybervm rag update`, what got created on disk,
 > how the data is stored, how a local LLM queries it, and whether you can/should
 > hand it to OpenCode or a cloud model.
 >
@@ -10,7 +10,7 @@
 > `services/rag/api/main.py`, `services/rag/docker-compose.yml`,
 > `services/rag/sources.yml`, `lib/rag.sh`, and the client templates under
 > `factory/ansible/roles/mcp_servers/templates/` (rendering moved out of `rag_client` into the
-> `mcp_servers` role, which owns all three client config files; the `cyberai-rag` entries are unchanged).
+> `mcp_servers` role, which owns all three client config files; the `cybervm-rag` entries are unchanged).
 
 ---
 
@@ -29,7 +29,7 @@ Everything runs on the **host**, bound to the internal AI-plane IP
 |------|------------|-------|
 | **Qdrant** | Vector database that stores the embedded knowledge | container `qdrant/qdrant:v1.12.4`, port `6333` |
 | **rag-api** | FastAPI service: REST `/search`, `/status`, and an MCP endpoint `/mcp` | container, port `8088` |
-| **ingest** | One-shot job (run by `cyberai rag update`) that fetches sources, embeds them, upserts into Qdrant | container, `profiles: ["tools"]` |
+| **ingest** | One-shot job (run by `cybervm rag update`) that fetches sources, embeds them, upserts into Qdrant | container, `profiles: ["tools"]` |
 | **Ollama** | Turns text into vectors ("embeddings") using `nomic-embed-text` | host, port `11434` |
 
 The only outbound traffic is the ingester fetching public sources (NVD, CISA,
@@ -144,7 +144,7 @@ low-false-positive design — the model can tell confirmed intel from inference.
 
 ## 6a.4 What got created on disk (the folder map)
 
-Root is `rag/` in the repo (`CYBERAI_RAG="$CYBERAI_ROOT/rag"` in `.cyberai.env`).
+Root is `rag/` in the repo (`CYBERVM_RAG="$CYBERVM_ROOT/rag"` in `.cybervm.env`).
 It is **git-ignored** — the index never gets committed. Current live layout:
 
 ```
@@ -159,7 +159,7 @@ rag/
 │   └── .deleted/         ← Qdrant internal
 │
 ├── state/                ← ingester's working state  (~194 MB)
-│   ├── cyberai_rag_state.json   ← the dedup ledger: source → {seen:{key→version}, last_run}
+│   ├── cybervm_rag_state.json   ← the dedup ledger: source → {seen:{key→version}, last_run}
 │   └── git-cache/               ← shallow git clones of the 4 git sources
 │       ├── nuclei_templates/    (this is most of the 194 MB)
 │       ├── owasp_cheatsheets/
@@ -167,15 +167,15 @@ rag/
 │       └── payloadsallthethings/
 │
 ├── sources/
-│   └── personal/         ← drop YOUR own *.md notes here, then: cyberai rag update personal
+│   └── personal/         ← drop YOUR own *.md notes here, then: cybervm rag update personal
 │
-└── backups/             ← snapshots written by: cyberai rag backup
+└── backups/             ← snapshots written by: cybervm rag backup
 ```
 
 Two things that surprise first-timers:
 
 - **`rag/data/` is owned by `root`.** That's normal — the Qdrant container runs
-  as root and owns its volume. Don't `chown` it; use `cyberai rag` commands to
+  as root and owns its volume. Don't `chown` it; use `cybervm rag` commands to
   interact with it.
 - **`git-cache/` is large** because the ingester does real (shallow) clones of
   the source repos so it can re-scan them incrementally. It's a cache — safe to
@@ -239,7 +239,7 @@ Filters you can pass: `tier_max` (max trust tier, default 4), `since` (ISO date,
 ### 2. MCP (how the AI tools consume it)
 `rag-api` exposes an MCP endpoint at `/mcp` with two tools:
 `search_security_kb` and `get_cve`. The golden image already wires this server —
-named **`cyberai-rag`** — into the three CLIs via templates in
+named **`cybervm-rag`** — into the three CLIs via templates in
 `factory/ansible/roles/mcp_servers/templates/`:
 
 - **Claude** (`claude-mcp.json.j2`) → `http://<host>:8088/mcp`
@@ -248,17 +248,17 @@ named **`cyberai-rag`** — into the three CLIs via templates in
   default** — flip it to `true` to turn the tool on for OpenCode.
 
 > **Known gap (not yet fixed).** Claude Code does not read
-> `~/.config/cyberai/claude-mcp.json`, and templating `~/.claude.json` is not an
+> `~/.config/cybervm/claude-mcp.json`, and templating `~/.claude.json` is not an
 > option because it holds onboarding state and caches. The fix is to register the
-> server with `claude mcp add --scope user --transport http cyberai-rag <url>`
+> server with `claude mcp add --scope user --transport http cybervm-rag <url>`
 > during provisioning, the same way the `mcp_servers` role already registers the
-> Playwright MCP. Until that lands, **`cyberai-rag` is effectively configured for
+> Playwright MCP. Until that lands, **`cybervm-rag` is effectively configured for
 > Codex only**, not for Claude or OpenCode. The Playwright MCP *is* correctly
 > registered with all three.
 
 ### 3. CLI wrappers (the everyday path)
 ```bash
-kali$ cyberai ai opencode "Which CVEs were added to CISA KEV recently? cite tier and date."
+kali$ cybervm ai opencode "Which CVEs were added to CISA KEV recently? cite tier and date."
 kali$ opencode run "Which CVEs were added to CISA KEV recently? cite tier and date."
 ```
 
@@ -271,7 +271,7 @@ anything cloud.
 
 ### Local tools in the VM (OpenCode / Codex / Claude CLI) — yes
 This is exactly what it's for. It's just an HTTP/MCP endpoint on the internal IP.
-For OpenCode specifically, set the `cyberai-rag` MCP block to `"enabled": true`
+For OpenCode specifically, set the `cybervm-rag` MCP block to `"enabled": true`
 in its config (it ships disabled). Nothing else to do — the golden image already
 knows the URL.
 
@@ -300,28 +300,28 @@ index or the endpoint itself. Don't expose 8088 directly.
 
 ```bash
 # lifecycle
-cyberai rag up                 # start qdrant + rag-api on 192.168.57.1:8088
-cyberai rag status             # per-collection counts (proves it responds)
-cyberai rag down               # stop the stack (does not touch any VM)
+cybervm rag up                 # start qdrant + rag-api on 192.168.57.1:8088
+cybervm rag status             # per-collection counts (proves it responds)
+cybervm rag down               # stop the stack (does not touch any VM)
 
 # ingest (incremental — safe to re-run)
-cyberai rag update live        # NVD + KEV + GitHub advisories + EPSS + nuclei
-cyberai rag update stable      # ATT&CK + CWE + OWASP WSTG + Cheatsheets + Payloads
-cyberai rag update personal    # your rag/sources/personal/*.md notes
-cyberai rag update live --only nvd_cve   # re-ingest one source (e.g. after a rate-limit hiccup)
+cybervm rag update live        # NVD + KEV + GitHub advisories + EPSS + nuclei
+cybervm rag update stable      # ATT&CK + CWE + OWASP WSTG + Cheatsheets + Payloads
+cybervm rag update personal    # your rag/sources/personal/*.md notes
+cybervm rag update live --only nvd_cve   # re-ingest one source (e.g. after a rate-limit hiccup)
 
 # backup / restore (copies rag/data + rag/state)
-cyberai rag backup
-cyberai rag restore rag/backups/qdrant-YYYYMMDD-HHMM.snapshot
+cybervm rag backup
+cybervm rag restore rag/backups/qdrant-YYYYMMDD-HHMM.snapshot
 ```
 
 **Where things live:** vectors → `rag/data/collections/{live,stable,personal}` ·
-dedup ledger → `rag/state/cyberai_rag_state.json` · git clones →
+dedup ledger → `rag/state/cybervm_rag_state.json` · git clones →
 `rag/state/git-cache/` · your notes → `rag/sources/personal/`.
 
 **Verify anytime:**
 ```bash
-cyberai rag status
+cybervm rag status
 curl -s 192.168.57.1:8088/search -d '{"query":"KEV added recently","tier_max":1}' | jq .
 ```
 

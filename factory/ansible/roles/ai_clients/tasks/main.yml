@@ -1,7 +1,7 @@
 ---
 - name: Load AI client manifest
   set_fact:
-    clients: "{{ lookup('file', cyberai_config ~ '/ai/clients.yml') | from_yaml }}"
+    clients: "{{ lookup('file', cybervm_config ~ '/ai/clients.yml') | from_yaml }}"
 
 - name: Install AI client CLIs via npm (global)
   community.general.npm:
@@ -14,10 +14,10 @@
 
 - name: profile.d hook to source runtime secrets (pushed at run time, tmpfs)
   copy:
-    dest: /etc/profile.d/cyberai.sh
+    dest: /etc/profile.d/cybervm.sh
     mode: "0644"
     content: |
-      # CyberAI: load per-session cloud API keys if the host pushed them.
-      [ -f /run/user/$(id -u)/cyberai/secrets.env ] && . /run/user/$(id -u)/cyberai/secrets.env
+      # CyberVM: load per-session cloud API keys if the host pushed them.
+      [ -f /run/user/$(id -u)/cybervm/secrets.env ] && . /run/user/$(id -u)/cybervm/secrets.env
       export OLLAMA_HOST="{{ host_ai_ip }}:{{ ollama_port }}"
-      export CYBERAI_RAG_URL="http://{{ host_ai_ip }}:{{ rag_port }}"
+      export CYBERVM_RAG_URL="http://{{ host_ai_ip }}:{{ rag_port }}"

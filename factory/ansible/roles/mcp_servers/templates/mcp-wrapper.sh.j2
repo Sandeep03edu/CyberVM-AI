@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# {{ s.name }} — Playwright MCP launcher for CyberAI Kali clones.
+# {{ s.name }} — Playwright MCP launcher for CyberVM Kali clones.
 #
 # Headed by design: the browser window is ALWAYS visible so you can watch the
 # agent work. This script therefore requires a GUI session and FAILS LOUDLY
@@ -12,7 +12,7 @@ set -eu
 
 BROWSERS="{{ s.browsers_path }}"
 
-# MUST match the value cyberai-mcp-install used at bake time. If these disagree
+# MUST match the value cybervm-mcp-install used at bake time. If these disagree
 # the browser is written to one path and read from another and Chromium fails
 # with "Executable doesn't exist".
 export PLAYWRIGHT_BROWSERS_PATH="$BROWSERS"
@@ -34,7 +34,7 @@ if [ -z "${DISPLAY:-}" ]; then
   {
     echo "{{ s.name }}: no X display available — this MCP is headed-only by design."
     echo
-    echo "  Start the VM with a GUI session:   cyberai start <vm>     (NOT --headless)"
+    echo "  Start the VM with a GUI session:   cybervm start <vm>     (NOT --headless)"
     echo "  Over SSH, forward X or export DISPLAY and XAUTHORITY before"
     echo "  launching the agent."
     echo
@@ -45,12 +45,12 @@ if [ -z "${DISPLAY:-}" ]; then
 fi
 
 if [ ! -d "$BROWSERS" ]; then
-  echo "{{ s.name }}: $BROWSERS is missing - run: cyberai mcp update" >&2
+  echo "{{ s.name }}: $BROWSERS is missing - run: cybervm mcp update" >&2
   exit 1
 fi
 
 if ! command -v {{ s.bin }} >/dev/null 2>&1; then
-  echo "{{ s.name }}: {{ s.bin }} is not on PATH - run: cyberai mcp update" >&2
+  echo "{{ s.name }}: {{ s.bin }} is not on PATH - run: cybervm mcp update" >&2
   exit 1
 fi
 

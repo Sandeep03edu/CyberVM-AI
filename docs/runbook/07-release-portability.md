@@ -2,26 +2,26 @@
 
 ## 7.1 Export a portable image
 ```
-$ ./cyberai stop CyberAI-Kali-Golden 2>/dev/null || true
-$ ./cyberai release          # -> images/releases/CyberAI-Kali-<date>.ova (+ .sha256 + manifest)
+$ ./cybervm stop CyberVM-Kali-Golden 2>/dev/null || true
+$ ./cybervm release          # -> images/releases/CyberVM-Kali-<date>.ova (+ .sha256 + manifest)
 ```
 
 ## 7.2 Back up (to your HDD)
 ```
-$ ./cyberai backup /media/$USER/YOUR-HDD
+$ ./cybervm backup /media/$USER/YOUR-HDD
 ```
 Copies source + config + releases + RAG snapshot + a model list (models are re-pullable).
 
 ## 7.3 On another machine
 ```
-$ git clone <repo> CyberAIKaliVM && cd CyberAIKaliVM
-$ cp .cyberai.env.example .cyberai.env    # edit CYBERAI_ROOT
-$ ./cyberai host-setup
+$ git clone <repo> CyberVM-AI && cd CyberVM-AI
+$ cp .cybervm.env.example .cybervm.env    # edit CYBERVM_ROOT
+$ ./cybervm host-setup
 # fast path:
-$ ./cyberai import /path/to/CyberAI-Kali-<date>.ova
+$ ./cybervm import /path/to/CyberVM-Kali-<date>.ova
 # or rebuild from source:
-$ ./cyberai base import && ./cyberai golden build
-$ ./cyberai rag up && ./cyberai rag update live
+$ ./cybervm base import && ./cybervm golden build
+$ ./cybervm rag up && ./cybervm rag update live
 ```
 ✅ **Pass gate:** imported OVA boots and a clone reaches host Ollama + RAG.
 
