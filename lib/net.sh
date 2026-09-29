@@ -3,7 +3,7 @@
 
 net_apply() { # net_apply <vm> <mode>  (VM must be off)
   local vm="$1" mode="$2" ifn
-  ifn="$(cat "$CYBERAI_HOME/.cyberai.netif" 2>/dev/null || echo vboxnet0)"
+  ifn="$(cat "$CYBERVM_HOME/.cybervm.netif" 2>/dev/null || echo vboxnet0)"
   case "$mode" in
     offline)  VBoxManage modifyvm "$vm" --nic1 null \
                 --nic2 hostonly --host-only-adapter2 "$ifn" ;;
@@ -17,7 +17,7 @@ net_apply() { # net_apply <vm> <mode>  (VM must be off)
   esac
 }
 
-net_set() { # cyberai net <vm> <mode>
+net_set() { # cybervm net <vm> <mode>
   local vm="${1:?vm}" mode="${2:?mode}"
   vm_exists "$vm" || {
     local px; px="$(platform .vm_names.clone_prefix)"

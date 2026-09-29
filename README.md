@@ -1,4 +1,4 @@
-# CyberAI Kali VM Platform
+# CyberVM-AI Kali Platform
 
 A reproducible, portable lab for security testing with AI assistance. One **golden Kali image**
 you never touch, cheap **disposable clones** for real work, a **host-native local LLM** (Ollama),
@@ -16,25 +16,25 @@ From the design discussion in `AIPlan/` (the requirements source of truth), the 
 
 | Requirement | How this repo meets it |
 |---|---|
-| Create/kill a Kali environment anytime without touching the host OS | VirtualBox VMs; `cyberai new/destroy` |
+| Create/kill a Kali environment anytime without touching the host OS | VirtualBox VMs; `cybervm new/destroy` |
 | Never rebuild VM #2 by hand | **Ansible** provisions a golden image from `config/` manifests |
 | Not be tied to one LLM | Model / runtime / client are separated; local Ollama **and** cloud providers |
 | Same RAG shared by every VM, updated once | One **host RAG service**; VMs query it over one endpoint |
 | Fresh CVE + in-the-wild intel, few false positives | Tiered sources + **CISA KEV** + **EPSS** + freshness metadata |
 | Tools (incl. Burp + extensions) present without manual setup | Manifest-driven install; pinned, checksum-verified BApps |
-| Strong sandbox, but switchable internet + controlled file transfer | Two NICs + `cyberai net` modes + transient transfer |
+| Strong sandbox, but switchable internet + controlled file transfer | Two NICs + `cybervm net` modes + transient transfer |
 | No secrets in images | API keys stay on the host, pushed to VM **tmpfs** at runtime |
-| Portable to other machines / an SSD later | OVA export + `CYBERAI_ROOT` is the only path that changes |
+| Portable to other machines / an SSD later | OVA export + `CYBERVM_ROOT` is the only path that changes |
 
 ## How it works (the shape)
 
 ```
-Ubuntu host ── ./cyberai
+Ubuntu host ── ./cybervm
  ├─ Ollama (native)   192.168.57.1:11434     ← local models, unloads when idle
  ├─ RAG (docker)      192.168.57.1:8088      ← qdrant + REST/MCP + tiered ingest
  └─ VirtualBox
-      CyberAI-Kali-Base   (verified official image; untouched)
-      CyberAI-Kali-Golden (Ansible-provisioned; snapshot golden-<date>)
+      CyberVM-Kali-Base   (verified official image; untouched)
+      CyberVM-Kali-Golden (Ansible-provisioned; snapshot golden-<date>)
       kali-<name>         (disposable LINKED clones)
         NIC1 internet plane: none | nat | bridged
         NIC2 AI plane: host-only 192.168.57.0/24 → reaches ONLY Ollama + RAG
@@ -47,7 +47,7 @@ you edit a manifest and rebuild — you never hand-edit a running VM.
 ## Layout
 
 ```
-cyberai              # the CLI you run for everything
+cybervm              # the CLI you run for everything
 lib/*.sh             # CLI implementation (one file per area)
 config/              # PINNED source of truth: versions, tools, burp, ai
   platform.yml       #   Kali/Ollama/VBox versions + checksums + resource profiles
@@ -63,31 +63,32 @@ docs/runbook/        # step-by-step beginner guide (start at 00)
 ## Quick start (summary — full detail in the runbook)
 
 ```bash
-cp .cyberai.env.example .cyberai.env     # edit CYBERAI_ROOT if you like
-./cyberai host-setup                     # installs Ollama, network, ufw, deps
-./cyberai doctor                         # must be all PASS
-./cyberai pins check                     # Burp BApp pins current (serials + sha256)
-./cyberai pins refresh                   # only if pins check reports DRIFT
-./cyberai base import                    # register the verified Kali image
-./cyberai golden build                   # Ansible-provision + snapshot
-./cyberai new work-01                    # a disposable clone
-./cyberai start work-01 --net offline
+cp .cybervm.env.example .cybervm.env     # edit CYBERVM_ROOT if you like
+./cybervm host-setup                     # installs Ollama, network, ufw, deps; puts `cybervm` on PATH
+# after host-setup, `cybervm ...` works from ANY directory (re-run host-setup if you move the repo)
+./cybervm doctor                         # must be all PASS
+./cybervm pins check                     # Burp BApp pins current (serials + sha256)
+./cybervm pins refresh                   # only if pins check reports DRIFT
+./cybervm base import                    # register the verified Kali image
+./cybervm golden build                   # Ansible-provision + snapshot
+./cybervm new work-01                    # a disposable clone
+./cybervm start work-01 --net offline
 ```
 
-**Inside a Kali clone** (the golden image ships a guest `cyberai` CLI that talks to host Ollama
+**Inside a Kali clone** (the golden image ships a guest `cybervm` CLI that talks to host Ollama
 over the AI plane — works offline):
 
 ```bash
-kali$ source /etc/profile.d/cyberai.sh
-kali$ cyberai ai run "what does nmap -sV do?"        # stream a reply from the local model
-kali$ cyberai ai opencode "what does nmap -sV do?"   # same, through opencode (ollama/qwen2.5:3b-instruct)
+kali$ source /etc/profile.d/cybervm.sh
+kali$ cybervm ai run "what does nmap -sV do?"        # stream a reply from the local model
+kali$ cybervm ai opencode "what does nmap -sV do?"   # same, through opencode (ollama/qwen2.5:3b-instruct)
 ```
 
 ## Safety rules (baked into the tooling)
 
 - **Never work in Golden or Base** — `destroy` refuses them; you work only in clones.
 - **Default network is `offline`** (AI + RAG, no internet). `bridged` requires typing `yes`.
-- **Secrets never enter an image** — they live in `~/.config/cyberai/secrets.env` (chmod 600)
+- **Secrets never enter an image** — they live in `~/.config/cybervm/secrets.env` (chmod 600)
   and are pushed to a VM's tmpfs only when you ask.
 - **Everything pinned + checksum-verified** — Kali archive, Ollama, Burp extensions.
 

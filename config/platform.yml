@@ -1,4 +1,4 @@
-# ── CyberAI platform pins (single source of truth for versions/checksums) ──
+# ── CyberVM platform pins (single source of truth for versions/checksums) ──
 # Bump deliberately; every value here makes builds reproducible.
 
 kali:
@@ -17,12 +17,12 @@ ollama:
   version: "v0.34.2"          # verified latest 2026-09-20
   url: "https://github.com/ollama/ollama/releases/download/v0.34.2/ollama-linux-amd64.tar.zst"
   # sha256: Linux assets moved from .tgz -> .tar.zst; hash from the release's sha256sum.txt (host-setup verifies).
-  # Refresh automatically with: cyberai host ollama-pin
+  # Refresh automatically with: cybervm host ollama-pin
   sha256: "e155b83589986d2c581fdbf1381ea3ebdb16549883679cd5a0627f7cdc05b12b"
 
 vm_names:
-  base:   "CyberAI-Kali-Base"
-  golden: "CyberAI-Kali-Golden"
+  base:   "CyberVM-Kali-Base"
+  golden: "CyberVM-Kali-Golden"
   clone_prefix: ""
 
 # Shared host-side VM features, applied automatically by every code path that
@@ -44,17 +44,17 @@ snapshots:
   base:   "base-clean"
   golden: "golden"           # actual tag becomes golden-<YYYY.MM.DD>
 
-# Per-clone CPU/memory. Applied ONLY at `cyberai new` time (and by
-# `cyberai resize`) — these are .vbox properties, so the golden image is never
+# Per-clone CPU/memory. Applied ONLY at `cybervm new` time (and by
+# `cybervm resize`) — these are .vbox properties, so the golden image is never
 # modified and one golden serves every clone.
 #
 # RAM:vCPU is a uniform 1:2 ratio across all profiles, and it is also the rule
-# `cyberai new --ram <GB>` derives from when --cpus is omitted. Keeping the two
+# `cybervm new --ram <GB>` derives from when --cpus is omitted. Keeping the two
 # identical means `--ram 12` and `--profile balanced` agree; if they diverged,
 # the same request would silently produce two different machines.
 #
 # Sizing is bounded by the HOST, not the guest — see the RAM guard in lib/vm.sh
-# (CYBERAI_HOST_RESERVE_MB, .cyberai.env). With a 6144MB reserve the host's
+# (CYBERVM_HOST_RESERVE_MB, .cybervm.env). With a 6144MB reserve the host's
 # usable budget is roughly (MemTotal - 6144), so:
 #   lean 8192x2  -> up to 3 concurrent    balanced 12288x2 -> 2 concurrent
 #   large 16384  -> 1 concurrent only

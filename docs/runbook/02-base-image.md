@@ -1,6 +1,6 @@
 # Phase 2 — Base image (from your verified Kali `.7z`)
 
-**Goal:** register the official Kali prebuilt VM as `CyberAI-Kali-Base` and enable headless SSH.
+**Goal:** register the official Kali prebuilt VM as `CyberVM-Kali-Base` and enable headless SSH.
 
 ## Why this way (file-type note)
 Your Kali download is a **`.7z` containing a `.vbox` + `.vdi`** — a ready-made VM.
@@ -9,28 +9,28 @@ Your Kali download is a **`.7z` containing a `.vbox` + `.vdi`** — a ready-made
 
 ## 2.1 Run
 ```
-$ cd ~/Personal/CyberAIKaliVM
-$ ./cyberai base import
+$ cd ~/Personal/CyberVM-AI
+$ ./cybervm base import
 ```
 Steps it performs automatically:
 1. Verifies the archive sha256 against `config/platform.yml` (STOPS if mismatch).
 2. `7z x` into `images/base/`.
-3. `VBoxManage registervm …/*.vbox` → renames to `CyberAI-Kali-Base`.
+3. `VBoxManage registervm …/*.vbox` → renames to `CyberVM-Kali-Base`.
 4. Hardens it: audio/USB off, NAT loopback off, adds NIC2 on the AI plane. Clipboard/DnD are set from
    `config/platform.yml` `.vm_defaults` (currently `bidirectional`) and applied by
-   `lib/common.sh vm_apply_host_config`; `./cyberai doctor` reports read-only drift.
+   `lib/common.sh vm_apply_host_config`; `./cybervm doctor` reports read-only drift.
 5. Boots headless and, via Guest Additions, enables SSH + installs your key + passwordless sudo.
 6. Takes snapshot `base-clean`, then powers off.
 
 ## 2.2 Verify
 ```
-$ VBoxManage list vms | grep CyberAI-Kali-Base
-$ VBoxManage snapshot CyberAI-Kali-Base list
+$ VBoxManage list vms | grep CyberVM-Kali-Base
+$ VBoxManage snapshot CyberVM-Kali-Base list
 # start it, grab its AI-plane IP, test SSH:
-$ VBoxManage startvm CyberAI-Kali-Base --type headless
-$ IP=$(VBoxManage guestproperty get CyberAI-Kali-Base /VirtualBox/GuestInfo/Net/1/V4/IP | sed 's/Value: //')
-$ ssh -i ~/.config/cyberai/id_ed25519 kali@$IP true && echo "SSH OK"
-$ VBoxManage controlvm CyberAI-Kali-Base acpipowerbutton
+$ VBoxManage startvm CyberVM-Kali-Base --type headless
+$ IP=$(VBoxManage guestproperty get CyberVM-Kali-Base /VirtualBox/GuestInfo/Net/1/V4/IP | sed 's/Value: //')
+$ ssh -i ~/.config/cybervm/id_ed25519 kali@$IP true && echo "SSH OK"
+$ VBoxManage controlvm CyberVM-Kali-Base acpipowerbutton
 ```
 ✅ **Pass gate:** `SSH OK` printed and snapshot `base-clean` exists.
 

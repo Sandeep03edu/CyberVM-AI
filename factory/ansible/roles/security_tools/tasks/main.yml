@@ -1,10 +1,10 @@
 ---
 - name: Load tool manifests from repo config
   set_fact:
-    apt_manifest: "{{ (lookup('file', cyberai_config ~ '/tools/apt.yml') | from_yaml) | default({}, true) }}"
-    gh_manifest:  "{{ (lookup('file', cyberai_config ~ '/tools/github.yml') | from_yaml) | default({}, true) }}"
-    bin_manifest: "{{ (lookup('file', cyberai_config ~ '/tools/binaries.yml') | from_yaml) | default({}, true) }}"
-    pip_manifest: "{{ (lookup('file', cyberai_config ~ '/tools/pip.yml') | from_yaml) | default({}, true) }}"
+    apt_manifest: "{{ (lookup('file', cybervm_config ~ '/tools/apt.yml') | from_yaml) | default({}, true) }}"
+    gh_manifest:  "{{ (lookup('file', cybervm_config ~ '/tools/github.yml') | from_yaml) | default({}, true) }}"
+    bin_manifest: "{{ (lookup('file', cybervm_config ~ '/tools/binaries.yml') | from_yaml) | default({}, true) }}"
+    pip_manifest: "{{ (lookup('file', cybervm_config ~ '/tools/pip.yml') | from_yaml) | default({}, true) }}"
 
 - name: Install Kali metapackages
   apt: { name: "{{ apt_manifest.metapackages | default([]) }}", state: present }

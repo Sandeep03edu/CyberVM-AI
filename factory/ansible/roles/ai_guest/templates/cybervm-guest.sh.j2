@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Guest cyberai CLI — talk to the HOST Ollama over the AI plane from inside a Kali clone.
-# Mirrors the host `./cyberai ai ...` subcommands that make sense in-VM:
-#   cyberai ai run [model:tag] <prompt>
-#   cyberai ai list
-#   cyberai ai pull <model>
-#   cyberai ai rm <model>
-#   cyberai ai opencode [model:tag] <task>
-#   cyberai opencode <task>
+# Guest cybervm CLI — talk to the HOST Ollama over the AI plane from inside a Kali clone.
+# Mirrors the host `./cybervm ai ...` subcommands that make sense in-VM:
+#   cybervm ai run [model:tag] <prompt>
+#   cybervm ai list
+#   cybervm ai pull <model>
+#   cybervm ai rm <model>
+#   cybervm ai opencode [model:tag] <task>
+#   cybervm opencode <task>
 # Plus in-VM management of the MCP servers baked into the golden image:
-#   cyberai mcp status
-#   cyberai mcp verify
-#   cyberai mcp update
-# Host-only operations (golden build, bench, tune, RAG, transfer) stay on the host as ./cyberai.
+#   cybervm mcp status
+#   cybervm mcp verify
+#   cybervm mcp update
+# Host-only operations (golden build, bench, tune, RAG, transfer) stay on the host as ./cybervm.
 set -euo pipefail
 
-# Endpoint is baked in here by Ansible; OLLAMA_HOST (exported by /etc/profile.d/cyberai.sh
+# Endpoint is baked in here by Ansible; OLLAMA_HOST (exported by /etc/profile.d/cybervm.sh
 # in login shells) overrides it when set.
 OLLAMA_BASE="http://${OLLAMA_HOST:-{{ host_ai_ip }}:{{ ollama_port }}}"
-DEFAULT_MODEL="${CYBERAI_AI_MODEL:-qwen2.5:3b-instruct}"
+DEFAULT_MODEL="${CYBERVM_AI_MODEL:-qwen2.5:3b-instruct}"
 
 say() { printf '\033[1;32m[*] %s\033[0m\n' "$*" >&2; }
 err() { printf '\033[1;31m[!] %s\033[0m\n' "$*" >&2; }
@@ -25,42 +25,42 @@ die() { err "$*"; exit 1; }
 
 usage() {
   cat <<EOF
-cyberai (guest) - talk to the host LLM from inside a Kali clone.
+cybervm (guest) - talk to the host LLM from inside a Kali clone.
 
-  cyberai ai run [model:tag] <prompt>       Send a prompt to a local model and stream the reply
-  cyberai ai list                            List models available on the host Ollama
-  cyberai ai pull <model>                    Pull a model onto the host Ollama
-  cyberai ai rm <model>                      Delete a model from the host Ollama
-  cyberai ai opencode [model:tag] <task>     Run opencode against the local model (ollama/<model>)
-  cyberai opencode <task>                    Shortcut for \`cyberai ai opencode\`
+  cybervm ai run [model:tag] <prompt>       Send a prompt to a local model and stream the reply
+  cybervm ai list                            List models available on the host Ollama
+  cybervm ai pull <model>                    Pull a model onto the host Ollama
+  cybervm ai rm <model>                      Delete a model from the host Ollama
+  cybervm ai opencode [model:tag] <task>     Run opencode against the local model (ollama/<model>)
+  cybervm opencode <task>                    Shortcut for \`cybervm ai opencode\`
 
-  cyberai mcp status                         Baked MCP server + browser versions
-  cyberai mcp verify                         Offline health check for the baked browser
-  cyberai mcp update                         Refresh MCP servers to the latest release
+  cybervm mcp status                         Baked MCP server + browser versions
+  cybervm mcp verify                         Offline health check for the baked browser
+  cybervm mcp update                         Refresh MCP servers to the latest release
                                             (needs net mode nat|bridged; the baked
                                              version keeps working with no network)
-  cyberai help                               This message
+  cybervm help                               This message
 
-Default model: ${DEFAULT_MODEL} (override with CYBERAI_AI_MODEL).
-Orchestration (golden build, bench, tune, RAG, transfer) is host-only: run ./cyberai on the host.
+Default model: ${DEFAULT_MODEL} (override with CYBERVM_AI_MODEL).
+Orchestration (golden build, bench, tune, RAG, transfer) is host-only: run ./cybervm on the host.
 EOF
 }
 
 _reach() {
   curl -fsm2 "$OLLAMA_BASE/api/tags" >/dev/null 2>&1 || die \
-    "host Ollama not reachable at $OLLAMA_BASE - is this VM on the AI plane (offline/nat) and is the host up? (run: cyberai doctor)"
+    "host Ollama not reachable at $OLLAMA_BASE - is this VM on the AI plane (offline/nat) and is the host up? (run: cybervm doctor)"
   command -v jq >/dev/null 2>&1 || die "jq is required but missing - rebuild golden (common role) and recreate this clone."
 }
 
 ai_run() {
   local model="$DEFAULT_MODEL"
   case "${1:-}" in
-    "" ) die "usage: cyberai ai run [model:tag] <prompt>" ;;
+    "" ) die "usage: cybervm ai run [model:tag] <prompt>" ;;
     *[[:space:]]* ) ;;                 # has spaces -> it's the prompt, keep default model
     *:* ) model="$1"; shift ;;         # bare model:tag -> use it as the model
   esac
   local prompt="$*"
-  [ -n "$prompt" ] || die "usage: cyberai ai run [model:tag] <prompt>"
+  [ -n "$prompt" ] || die "usage: cybervm ai run [model:tag] <prompt>"
   _reach
   curl -fsSN -m 120 "$OLLAMA_BASE/api/generate" \
     -d "$(jq -nc --arg m "$model" --arg p "$prompt" \
@@ -74,12 +74,12 @@ ai_run() {
 ai_list() {
   _reach
   curl -fsS "$OLLAMA_BASE/api/tags" | jq -r '.models[]?.name' \
-    || die "no models found on the host - run: cyberai ai pull <model>"
+    || die "no models found on the host - run: cybervm ai pull <model>"
 }
 
 ai_pull() {
   local model="${1:-}"
-  [ -n "$model" ] || die "usage: cyberai ai pull <model>"
+  [ -n "$model" ] || die "usage: cybervm ai pull <model>"
   _reach
   curl -fsS -X POST "$OLLAMA_BASE/api/pull" -d "$(jq -nc --arg m "$model" '{model:$m,stream:false}')" \
     | jq -r '.status // empty'
@@ -87,7 +87,7 @@ ai_pull() {
 
 ai_rm() {
   local model="${1:-}"
-  [ -n "$model" ] || die "usage: cyberai ai rm <model>"
+  [ -n "$model" ] || die "usage: cybervm ai rm <model>"
   _reach
   curl -fsS -X DELETE "$OLLAMA_BASE/api/delete" -d "$(jq -nc --arg m "$model" '{model:$m}')" >/dev/null \
     && say "deleted $model from host Ollama"
@@ -96,12 +96,12 @@ ai_rm() {
 ai_opencode() {
   local model="$DEFAULT_MODEL"
   case "${1:-}" in
-    "" ) die "usage: cyberai ai opencode [model:tag] <task>" ;;
+    "" ) die "usage: cybervm ai opencode [model:tag] <task>" ;;
     *[[:space:]]* ) ;;                 # has spaces -> it's the task, keep default model
     *:* ) model="$1"; shift ;;         # bare model:tag -> use it as the model
   esac
   local task="$*"
-  [ -n "$task" ] || die "usage: cyberai ai opencode [model:tag] <task>"
+  [ -n "$task" ] || die "usage: cybervm ai opencode [model:tag] <task>"
   command -v opencode >/dev/null 2>&1 || die \
     "opencode is not installed - it ships in the golden image (ai_clients role); rebuild golden and create a fresh clone."
   exec opencode run "$task" --model "ollama/$model"
@@ -126,26 +126,26 @@ ai_dispatch() {
 # `update` is the only one that reaches out, and it says so clearly when the VM
 # has no route rather than hanging on a DNS timeout.
 _mcp_tool() {
-  command -v cyberai-mcp-install >/dev/null 2>&1 || die \
+  command -v cybervm-mcp-install >/dev/null 2>&1 || die \
     "the MCP servers are not in this image - they ship in the golden image (mcp_servers role); rebuild golden and create a fresh clone."
 }
 
 # sudo resets PATH (secure_path), which may not include the directory the
-# installer lives in - so a bare `sudo cyberai-mcp-install` can fail with
+# installer lives in - so a bare `sudo cybervm-mcp-install` can fail with
 # "command not found" even though the file is right there. Always hand sudo an
-# absolute path. This mirrors mcp_servers' dest: /usr/local/bin/cyberai-mcp-install
+# absolute path. This mirrors mcp_servers' dest: /usr/local/bin/cybervm-mcp-install
 # and is only a fallback if the binary somehow moved off PATH.
 _mcp_installer() {
-  command -v cyberai-mcp-install 2>/dev/null || printf '%s' /usr/local/bin/cyberai-mcp-install
+  command -v cybervm-mcp-install 2>/dev/null || printf '%s' /usr/local/bin/cybervm-mcp-install
 }
 
 _need_internet() {
   ip route get 1.1.1.1 >/dev/null 2>&1 || die \
 "no internet route from this VM (net mode is probably offline or airgap).
-  On the host:  cyberai net <vm> nat      (or bridged)
+  On the host:  cybervm net <vm> nat      (or bridged)
 
-  The version baked into this image already works offline - 'cyberai mcp status',
-  'cyberai mcp verify' and all three agents need no network. Only 'mcp update'
+  The version baked into this image already works offline - 'cybervm mcp status',
+  'cybervm mcp verify' and all three agents need no network. Only 'mcp update'
   downloads anything new."
 }
 

@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
-# cyberai-mcp-install — install / refresh the MCP servers declared in
-# /etc/cyberai/mcp-install.plan (rendered from config/mcp/servers.yml by the
+# cybervm-mcp-install — install / refresh the MCP servers declared in
+# /etc/cybervm/mcp-install.plan (rendered from config/mcp/servers.yml by the
 # mcp_servers role at golden-build time).
 #
 # This script is deliberately static: the manifest data lives in a separate plan
 # file so the same binary works in three places without templating —
 #   * `bake`    — called by the mcp_servers Ansible role during `golden build`
-#   * `update`  — called by `cyberai mcp update` from inside a clone
+#   * `update`  — called by `cybervm mcp update` from inside a clone
 #   * `status` / `verify` — read-only, `verify` works fully offline
 #
 # Baked browsers live in a shared, world-readable path so every linked clone
 # inherits them via copy-on-write at ~zero marginal cost. `verify` is the
 # offline health check: everything except `update` works with no network.
 #
-#   cyberai-mcp-install bake [--force]   install per plan (no-op if already baked)
-#   cyberai-mcp-install update           refresh packages+browsers to latest (needs net)
-#   cyberai-mcp-install status           show versions; diff vs registry if reachable
-#   cyberai-mcp-install verify           offline health check
+#   cybervm-mcp-install bake [--force]   install per plan (no-op if already baked)
+#   cybervm-mcp-install update           refresh packages+browsers to latest (needs net)
+#   cybervm-mcp-install status           show versions; diff vs registry if reachable
+#   cybervm-mcp-install verify           offline health check
 set -euo pipefail
 
-PLAN=/etc/cyberai/mcp-install.plan
-LOCK=/etc/cyberai/mcp.lock
-# Absolute path to this script. Callers run it as `sudo cyberai-mcp-install`,
+PLAN=/etc/cybervm/mcp-install.plan
+LOCK=/etc/cybervm/mcp.lock
+# Absolute path to this script. Callers run it as `sudo cybervm-mcp-install`,
 # where a bare name can fail because sudo resets PATH via secure_path - so
 # resolve once here and always invoke/compare using an absolute path.
 SELF="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
@@ -72,7 +72,7 @@ _browser_dirs() { # <browsers_path> <browser> -> one dir name per line
   ls -1d "$1/$2"-*/ 2>/dev/null | sed 's#/*$##' || true
 }
 
-_marker() { echo "$1/.cyberai-baked"; }
+_marker() { echo "$1/.cybervm-baked"; }
 
 _install_pkg() { # <package> <version>
   local spec="$1"
@@ -87,7 +87,7 @@ _install_pkg() { # <package> <version>
 _install_browser() { # <browsers_path> <browser> <no_shell:true|false> <with_deps:true|false>
   local path="$1" browser="$2" no_shell="$3" with_deps="$4" cli
   cli="$(resolve_pw_cli)" || die \
-    "could not locate playwright/cli.js under $(npm root --global) — is @playwright/mcp installed? Try: cyberai mcp update"
+    "could not locate playwright/cli.js under $(npm root --global) — is @playwright/mcp installed? Try: cybervm mcp update"
   local args=(install)
   [ "$with_deps" = true ] && args+=(--with-deps)
   args+=("$browser")
@@ -111,7 +111,7 @@ _write_lock() { # <browsers_path> <browser> <package>
   [ -n "$cli" ] && pw_v="$(node "$cli" --version 2>/dev/null || echo unknown)"
   dirs="$(_browser_dirs "$path" "$browser" | tr '\n' ' ')"
   {
-    echo "# Written by cyberai-mcp-install. The reproducibility anchor for this image."
+    echo "# Written by cybervm-mcp-install. The reproducibility anchor for this image."
     echo "generated=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "node=$(node --version 2>/dev/null || echo unknown)"
     echo "npm=$(npm --version 2>/dev/null || echo unknown)"
@@ -133,7 +133,7 @@ cmd_bake() { # [--force]
     [ -n "${name:-}" ] || continue
     case "$name" in \#*) continue;; esac
     if [ "$force" != true ] && [ -f "$(_marker "$path")" ]; then
-      say "$name already baked at $path — skipping (use cyberai mcp update, or '$SELF bake --force' to re-bake)."
+      say "$name already baked at $path — skipping (use cybervm mcp update, or '$SELF bake --force' to re-bake)."
       continue
     fi
     _install_pkg "$pkg" "$ver"
@@ -156,12 +156,12 @@ cmd_update() {
     _install_browser "$path" "$browser" "$no_shell" false
     _write_lock "$path" "$browser" "$pkg"
   done < "$PLAN"
-  say "update complete. Verify with: cyberai mcp verify"
+  say "update complete. Verify with: cybervm mcp verify"
 }
 
 cmd_status() {
   _plan
-  if [ -f "$LOCK" ]; then cat "$LOCK"; else warn "no $LOCK yet — cyberai-mcp-install has not run in this image."; fi
+  if [ -f "$LOCK" ]; then cat "$LOCK"; else warn "no $LOCK yet — cybervm-mcp-install has not run in this image."; fi
   echo
   local line name pkg bin ver path browser no_shell
   while IFS='|' read -r name pkg bin cmdpath ver path browser no_shell; do
@@ -179,7 +179,7 @@ cmd_status() {
       latest="$(timeout 20 npm view "$pkg" version 2>/dev/null || true)"
       if [ -n "$latest" ]; then
         printf '    registry    %s\n' "$latest"
-        [ "$latest" = "$(pkg_version "$pkg")" ] || printf '    update      ./cyberai mcp update  (net nat|bridged)\n'
+        [ "$latest" = "$(pkg_version "$pkg")" ] || printf '    update      ./cybervm mcp update  (net nat|bridged)\n'
       else
         printf '    registry    unreachable (offline) — baked version still works\n'
       fi
@@ -199,13 +199,13 @@ cmd_verify() { # fully offline
     echo
     say "  $name"
     if command -v "$bin" >/dev/null 2>&1; then say "    bin         $(command -v "$bin")"
-    else err "    bin         MISSING ($bin) — run: cyberai mcp update"; rc=1; fi
+    else err "    bin         MISSING ($bin) — run: cybervm mcp update"; rc=1; fi
     if [ -d "$path" ]; then
       say "    browsers    $path"
       # >&2 so the listing interleaves correctly with the say/err stream above.
       _browser_dirs "$path" "$browser" | sed 's#^#      #' >&2
     else
-      err "    browsers    MISSING $path — run: cyberai mcp update"; rc=1
+      err "    browsers    MISSING $path — run: cybervm mcp update"; rc=1
     fi
     chrome="$(ls -1d "$path"/"$browser"-*/chrome-linux*/chrome 2>/dev/null | head -1 || true)"
     if [ -z "$chrome" ]; then
@@ -225,7 +225,7 @@ cmd_verify() { # fully offline
     if [ -x "$w" ]; then say "  wrapper      $w (executable)"
     else err "  wrapper      $w MISSING or not executable"; rc=1; fi
   done
-  # Check the installer itself, not just what it installed. `cyberai mcp update`
+  # Check the installer itself, not just what it installed. `cybervm mcp update`
   # is the one command that needs it, and the failure mode is opaque: sudo resets
   # PATH, so a bare name yields "command not found" even when the file is fine.
   if [ -x "$SELF" ]; then say "  installer    $SELF (executable)"
@@ -237,9 +237,9 @@ cmd_verify() { # fully offline
 
 usage() {
   cat <<EOF
-cyberai-mcp-install — manage the MCP servers baked into this image.
+cybervm-mcp-install — manage the MCP servers baked into this image.
 
-  bake [--force]   Install per /etc/cyberai/mcp-install.plan. No-op when the
+  bake [--force]   Install per /etc/cybervm/mcp-install.plan. No-op when the
                    browsers marker already exists; --force re-bakes.  [root]
   update           Refresh packages + browsers to the latest release.
                    Skips OS deps (unchanged since bake).              [root, net]

@@ -1,4 +1,4 @@
-"""CyberAI RAG ingestion — layer-aware, tier-tagged, incremental.
+"""CyberVM RAG ingestion — layer-aware, tier-tagged, incremental.
 
 Design notes (why it's built this way):
 - Each source declares a trust *tier* and a *layer* (stable/live/personal) in sources.yml.
@@ -40,8 +40,8 @@ from qdrant_client.models import Distance, VectorParams, PointStruct
 QDRANT = os.environ.get("QDRANT_URL", "http://qdrant:6333")
 OLLAMA = os.environ.get("OLLAMA_URL", "http://192.168.57.1:11434")
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
-STATE_FILE = os.environ.get("CYBERAI_STATE_FILE", "/state/cyberai_rag_state.json")
-GIT_CACHE = os.environ.get("CYBERAI_GIT_CACHE", "/state/git-cache")
+STATE_FILE = os.environ.get("CYBERVM_STATE_FILE", "/state/cybervm_rag_state.json")
+GIT_CACHE = os.environ.get("CYBERVM_GIT_CACHE", "/state/git-cache")
 SOURCES = yaml.safe_load(open(pathlib.Path(__file__).parent.parent / "sources.yml"))["sources"] \
     if (pathlib.Path(__file__).parent.parent / "sources.yml").exists() else \
     yaml.safe_load(open("/app/sources.yml"))["sources"]
@@ -65,7 +65,7 @@ def utcnow() -> dt.datetime:
 
 def http_client() -> httpx.Client:
     return httpx.Client(timeout=120, follow_redirects=True,
-                        headers={"User-Agent": "cyberai-rag/0.1 (authorized security lab)"})
+                        headers={"User-Agent": "cybervm-rag/0.1 (authorized security lab)"})
 
 
 def embed_batch(texts: list[str], batch: int = 32) -> list[list[float]]:

@@ -1,4 +1,4 @@
-"""CyberAI RAG API — REST search + MCP endpoint over a Qdrant vector store.
+"""CyberVM RAG API — REST search + MCP endpoint over a Qdrant vector store.
 
 Metadata-aware: every hit carries tier (1-4), kind, dates, cve/cwe, kev, epss so the
 model can separate authoritative evidence from unverified inference (low false positives).
@@ -14,7 +14,7 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://192.168.57.1:11434")
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
 COLLECTIONS = ["stable", "live", "personal"]
 
-app = FastAPI(title="CyberAI RAG")
+app = FastAPI(title="CyberVM RAG")
 qc = QdrantClient(url=QDRANT_URL)
 
 
@@ -101,7 +101,7 @@ async def mcp(body: dict):
         return {"jsonrpc": "2.0", "id": mid, "result": {
             "protocolVersion": "2025-06-18",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "cyberai-rag", "version": "0.1.0"}}}
+            "serverInfo": {"name": "cybervm-rag", "version": "0.1.0"}}}
     if method == "tools/list":
         return {"jsonrpc": "2.0", "id": mid, "result": {"tools": TOOLS}}
     if method == "tools/call":

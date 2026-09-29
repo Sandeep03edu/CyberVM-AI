@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# lib/local-llm-remove.sh — revert 'cyberai ai tune'.
+# lib/local-llm-remove.sh — revert 'cybervm ai tune'.
 #
 # Reverting is deletion, not restoration: the tuning lives in a systemd DROP-IN
-# (/etc/systemd/system/ollama.service.d/cyberai-llm-tune.conf) that only overrides
+# (/etc/systemd/system/ollama.service.d/cybervm-llm-tune.conf) that only overrides
 # the base ollama.service. Removing the drop-in + reloading makes systemd fall
 # back to the base unit exactly (CPUQuota gone, Nice=0, KEEP_ALIVE=5m, CONTEXT=8192).
 # Only the runtime settings that are NOT in the unit (CPU governor, swappiness)
 # are restored from the state file that setup recorded.
 #
-# Called as: cyberai ai untune
+# Called as: cybervm ai untune
 set -euo pipefail
 
-: "${CYBERAI_HOME:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+: "${CYBERVM_HOME:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 # shellcheck source=lib/common.sh
-source "$CYBERAI_HOME/lib/common.sh"
+source "$CYBERVM_HOME/lib/common.sh"
 
 DROPIN_DIR=/etc/systemd/system/ollama.service.d
-DROPIN="$DROPIN_DIR/cyberai-llm-tune.conf"
-STATE="$CYBERAI_HOME/config/ai/.llm-tune.state"
+DROPIN="$DROPIN_DIR/cybervm-llm-tune.conf"
+STATE="$CYBERVM_HOME/config/ai/.llm-tune.state"
 
 changed=0
 

@@ -1,17 +1,18 @@
 # lib/host.sh — one-shot, idempotent host preparation (any x86-64 Ubuntu/Debian).
 
 host_setup() {
-  log "CyberAI host-setup starting (idempotent; safe to re-run)."
+  log "CyberVM host-setup starting (idempotent; safe to re-run)."
   _host_preflight
   _host_apt
+  _host_cli_link
   _host_ssh_key
   _host_ollama
   _host_network
   _host_ufw
   _host_secrets_stub
   _host_models
-  touch "$CYBERAI_HOME/.cyberai.host-ready"
-  ok "host-setup complete. Run: ./cyberai doctor"
+  touch "$CYBERVM_HOME/.cybervm.host-ready"
+  ok "host-setup complete. Run: ./cybervm doctor"
 }
 
 _host_preflight() {
@@ -20,9 +21,9 @@ _host_preflight() {
   local total_mb; total_mb=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
   [ "$total_mb" -ge 16000 ] || warn "RAM ${total_mb}MB is low; 32GB recommended."
   # KVM/VBox coexistence: if kvm modules hold VMX exclusively, VBox VMs fail to start.
-  if lsmod | grep -q '^kvm_intel' && [ ! -e /etc/modprobe.d/kvm-cyberai.conf ]; then
+  if lsmod | grep -q '^kvm_intel' && [ ! -e /etc/modprobe.d/kvm-cybervm.conf ]; then
     warn "KVM modules loaded. If VirtualBox VMs fail to start, run:"
-    warn "  echo 'options kvm enable_virt_at_load=0' | sudo tee /etc/modprobe.d/kvm-cyberai.conf && sudo update-initramfs -u"
+    warn "  echo 'options kvm enable_virt_at_load=0' | sudo tee /etc/modprobe.d/kvm-cybervm.conf && sudo update-initramfs -u"
   fi
   have VBoxManage || die "VirtualBox not installed. Install virtualbox-7.2 from Oracle's repo, then re-run."
   ok "Preflight OK (VT-x present, VirtualBox present)."
@@ -30,7 +31,16 @@ _host_preflight() {
 
 _host_apt() {
   log "Installing host dependencies via apt (sudo)…"
-  sudo apt-get update -qq
+  # A single broken third-party repo (e.g. a dead PPA missing its Release file) makes
+  # `apt-get update` exit non-zero, which under `set -e` would abort the entire host-setup
+  # before the SSH key / Ollama / CLI-link steps run. apt still refreshes every healthy
+  # repo (the Ubuntu archives our packages come from), so treat update as advisory and let
+  # the `apt-get install` below be the real gate — it fails loudly if a package is missing.
+  if ! sudo apt-get update -qq; then
+    warn "apt-get update reported errors — likely a broken third-party repo (see the E: line above)."
+    warn "Continuing with the package lists that refreshed OK. If install fails, fix/remove that repo:"
+    warn "  ls /etc/apt/sources.list.d/   # then disable the offending .list/.sources entry"
+  fi
   local apt_pkgs=(jq p7zip-full sshpass ufw curl wget rsync python3-pip pipx zstd)
   # Docker engine: only request Ubuntu's docker.io when nothing is already installed.
   # Respects Docker CE (download.docker.com), docker.io, or any future provider.
@@ -60,12 +70,25 @@ _host_apt() {
   ok "Dependencies installed (yq, jq, ansible-core, docker, 7z, sshpass, ufw)."
 }
 
+# Put the CLI on PATH so `cybervm …` works from any directory (not just ./cybervm
+# inside the repo). Idempotent; re-run after moving the repo (SSD/new machine) to
+# repoint the link — the entrypoint resolves the symlink back to the real repo.
+_host_cli_link() {
+  local link=/usr/local/bin/cybervm target="$CYBERVM_HOME/cybervm"
+  if [ "$(readlink -f "$link" 2>/dev/null)" = "$(readlink -f "$target")" ]; then
+    ok "cybervm CLI already on PATH ($link)."
+  else
+    sudo ln -sfn "$target" "$link"
+    ok "Linked $link -> $target — run 'cybervm' from any directory."
+  fi
+}
+
 _host_ssh_key() {
-  local kdir; kdir="$(dirname "$CYBERAI_SSH_KEY")"
+  local kdir; kdir="$(dirname "$CYBERVM_SSH_KEY")"
   mkdir -p "$kdir"; chmod 700 "$kdir"
-  if [ ! -f "$CYBERAI_SSH_KEY" ]; then
-    ssh-keygen -t ed25519 -N '' -C 'cyberai-provisioning' -f "$CYBERAI_SSH_KEY" >/dev/null
-    ok "Generated provisioning SSH key: $CYBERAI_SSH_KEY"
+  if [ ! -f "$CYBERVM_SSH_KEY" ]; then
+    ssh-keygen -t ed25519 -N '' -C 'cybervm-provisioning' -f "$CYBERVM_SSH_KEY" >/dev/null
+    ok "Generated provisioning SSH key: $CYBERVM_SSH_KEY"
   else
     ok "Provisioning SSH key present."
   fi
@@ -82,13 +105,13 @@ _host_ollama() {
     local code
     code=$(curl -sL --max-time 20 -o /dev/null -w '%{http_code}' -r 0-0 "$url" 2>/dev/null)
     case "$code" in 2*) ;; *)
-      die "Ollama asset unreachable (HTTP $code) at:\n  $url\n=== The pinned release may have moved/been renamed. Auto-refresh it with:\n    ./cyberai host ollama-pin\n=== then re-run host-setup.";;
+      die "Ollama asset unreachable (HTTP $code) at:\n  $url\n=== The pinned release may have moved/been renamed. Auto-refresh it with:\n    ./cybervm host ollama-pin\n=== then re-run host-setup.";;
     esac
 
     # Cache in downloads/ (gitignored) with resume (-c) so retries/re-runs don't re-fetch 1.4 GB.
     local dl
-    dl="${CYBERAI_DOWNLOADS}/ollama-${ver}.tar.zst"
-    case "$url" in *.tgz) dl="${CYBERAI_DOWNLOADS}/ollama-${ver}.tgz";; esac
+    dl="${CYBERVM_DOWNLOADS}/ollama-${ver}.tar.zst"
+    case "$url" in *.tgz) dl="${CYBERVM_DOWNLOADS}/ollama-${ver}.tgz";; esac
     mkdir -p "$(dirname "$dl")"
     wget -c --tries=3 --timeout=120 --show-progress --progress=bar:force -O "$dl" "$url" \
       || die "Ollama download failed (see progress above). Re-run host-setup to retry."
@@ -96,7 +119,7 @@ _host_ollama() {
     local want; want="$(platform .ollama.sha256)"
     if [ -n "$want" ] && [ "$want" != "null" ] && \
        ! { echo "$want  $dl" | sha256sum -c - >/dev/null; }; then
-      die "Ollama checksum mismatch — the lockfile is out of date. Run: ./cyberai host ollama-pin"
+      die "Ollama checksum mismatch — the lockfile is out of date. Run: ./cybervm host ollama-pin"
     fi
 
     # .zst: use --zstd WITHOUT -z (the two conflict); .tgz: plain gzip.
@@ -110,14 +133,14 @@ _host_ollama() {
   # systemd unit + override binding to the private host-only IP
   sudo tee /etc/systemd/system/ollama.service >/dev/null <<UNIT
 [Unit]
-Description=Ollama (CyberAI)
+Description=Ollama (CyberVM)
 After=network-online.target
 [Service]
 ExecStart=/usr/bin/ollama serve
 User=ollama
 Group=ollama
 Restart=always
-Environment="OLLAMA_HOST=${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}"
+Environment="OLLAMA_HOST=${CYBERVM_HOST_IP}:${CYBERVM_OLLAMA_PORT}"
 Environment="OLLAMA_MODELS=/var/lib/ollama"
 Environment="OLLAMA_KEEP_ALIVE=5m"
 Environment="OLLAMA_MAX_LOADED_MODELS=1"
@@ -133,54 +156,54 @@ UNIT
   sudo install -d -o ollama -g ollama /var/lib/ollama
   sudo systemctl daemon-reload
   sudo systemctl enable --now ollama >/dev/null 2>&1 || true
-  ok "Ollama service bound to ${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}."
+  ok "Ollama service bound to ${CYBERVM_HOST_IP}:${CYBERVM_OLLAMA_PORT}."
 }
 
 _host_network() {
-  log "Ensuring host-only network '${CYBERAI_NET_NAME}' (${CYBERAI_HOST_IP})…"
+  log "Ensuring host-only network '${CYBERVM_NET_NAME}' (${CYBERVM_HOST_IP})…"
   # Find (or create) a hostonly IF with our IP.
   local ifn
-  ifn=$(VBoxManage list hostonlyifs | awk -v ip="$CYBERAI_HOST_IP" '
+  ifn=$(VBoxManage list hostonlyifs | awk -v ip="$CYBERVM_HOST_IP" '
     /^Name:/{n=$2} /^IPAddress:/{if($2==ip) print n}')
   if [ -z "$ifn" ]; then
     ifn=$(VBoxManage hostonlyif create 2>/dev/null | sed -n "s/.*'\(.*\)'.*/\1/p")
     [ -z "$ifn" ] && ifn=$(VBoxManage list hostonlyifs | awk '/^Name:/{n=$2} END{print n}')
-    VBoxManage hostonlyif ipconfig "$ifn" --ip "$CYBERAI_HOST_IP" --netmask 255.255.255.0
+    VBoxManage hostonlyif ipconfig "$ifn" --ip "$CYBERVM_HOST_IP" --netmask 255.255.255.0
   fi
-  echo "$ifn" > "$CYBERAI_HOME/.cyberai.netif"
+  echo "$ifn" > "$CYBERVM_HOME/.cybervm.netif"
   # DHCP for the clones
   VBoxManage dhcpserver add --interface "$ifn" \
-    --server-ip "$CYBERAI_HOST_IP" --netmask 255.255.255.0 \
-    --lower-ip "$CYBERAI_DHCP_LOWER" --upper-ip "$CYBERAI_DHCP_UPPER" --enable 2>/dev/null \
+    --server-ip "$CYBERVM_HOST_IP" --netmask 255.255.255.0 \
+    --lower-ip "$CYBERVM_DHCP_LOWER" --upper-ip "$CYBERVM_DHCP_UPPER" --enable 2>/dev/null \
   || VBoxManage dhcpserver modify --interface "$ifn" --enable 2>/dev/null || true
-  ok "Host-only interface: $ifn ($CYBERAI_HOST_IP), DHCP ${CYBERAI_DHCP_LOWER}-${CYBERAI_DHCP_UPPER}."
+  ok "Host-only interface: $ifn ($CYBERVM_HOST_IP), DHCP ${CYBERVM_DHCP_LOWER}-${CYBERVM_DHCP_UPPER}."
 }
 
 _host_ufw() {
-  log "Configuring ufw for the AI plane (allow only Ollama + RAG from ${CYBERAI_NET_CIDR})…"
-  sudo ufw allow from "$CYBERAI_NET_CIDR" to "$CYBERAI_HOST_IP" port "$CYBERAI_OLLAMA_PORT" proto tcp >/dev/null 2>&1 || true
-  sudo ufw allow from "$CYBERAI_NET_CIDR" to "$CYBERAI_HOST_IP" port "$CYBERAI_RAG_PORT" proto tcp    >/dev/null 2>&1 || true
+  log "Configuring ufw for the AI plane (allow only Ollama + RAG from ${CYBERVM_NET_CIDR})…"
+  sudo ufw allow from "$CYBERVM_NET_CIDR" to "$CYBERVM_HOST_IP" port "$CYBERVM_OLLAMA_PORT" proto tcp >/dev/null 2>&1 || true
+  sudo ufw allow from "$CYBERVM_NET_CIDR" to "$CYBERVM_HOST_IP" port "$CYBERVM_RAG_PORT" proto tcp    >/dev/null 2>&1 || true
   # Docker containers (rag-api, ingest) also call host Ollama for embeddings. They arrive
   # from the private docker bridge range (172.16/12), not the AI plane — without this they
   # are silently dropped by ufw's deny-incoming default and every rag action times out.
-  sudo ufw allow from 172.16.0.0/12 to "$CYBERAI_HOST_IP" port "$CYBERAI_OLLAMA_PORT" proto tcp >/dev/null 2>&1 || true
+  sudo ufw allow from 172.16.0.0/12 to "$CYBERVM_HOST_IP" port "$CYBERVM_OLLAMA_PORT" proto tcp >/dev/null 2>&1 || true
   sudo ufw --force enable >/dev/null 2>&1 || true
-  ok "ufw rules applied (transfer port ${CYBERAI_TRANSFER_PORT} opened on demand)."
+  ok "ufw rules applied (transfer port ${CYBERVM_TRANSFER_PORT} opened on demand)."
 }
 
 _host_secrets_stub() {
-  mkdir -p "$(dirname "$CYBERAI_SECRETS")"
-  if [ ! -f "$CYBERAI_SECRETS" ]; then
-    cat > "$CYBERAI_SECRETS" <<SEC
-# CyberAI cloud API keys — NEVER commit, NEVER bake into images.
+  mkdir -p "$(dirname "$CYBERVM_SECRETS")"
+  if [ ! -f "$CYBERVM_SECRETS" ]; then
+    cat > "$CYBERVM_SECRETS" <<SEC
+# CyberVM cloud API keys — NEVER commit, NEVER bake into images.
 # Uncomment + fill only what you use.
 #ANTHROPIC_API_KEY=
 #OPENAI_API_KEY=
 #DEEPSEEK_API_KEY=
 #OPENROUTER_API_KEY=
 SEC
-    chmod 600 "$CYBERAI_SECRETS"
-    ok "Created secrets file: $CYBERAI_SECRETS (chmod 600)."
+    chmod 600 "$CYBERVM_SECRETS"
+    ok "Created secrets file: $CYBERVM_SECRETS (chmod 600)."
   else
     ok "Secrets file present."
   fi
@@ -191,13 +214,13 @@ _host_models() {
   local m
   while read -r m; do
     [ -z "$m" ] && continue
-    OLLAMA_HOST="${CYBERAI_HOST_IP}:${CYBERAI_OLLAMA_PORT}" ollama pull "$m" || warn "pull failed: $m"
-  done < <(yq_get "$CYBERAI_HOME/config/ai/models.yml" '.chat[], .embedding[]')
+    OLLAMA_HOST="${CYBERVM_HOST_IP}:${CYBERVM_OLLAMA_PORT}" ollama pull "$m" || warn "pull failed: $m"
+  done < <(yq_get "$CYBERVM_HOME/config/ai/models.yml" '.chat[], .embedding[]')
   ok "Model pulls attempted."
 }
 
 host_ollama_pin() { # refresh the pinned Ollama release (version/url/sha256) from GitHub — no manual edits
-  command -v yq >/dev/null || die "yq not found — run './cyberai host-setup' once first."
+  command -v yq >/dev/null || die "yq not found — run './cybervm host-setup' once first."
   local tag url sha
   log "Querying GitHub for the latest stable Ollama release…"
   tag=$(curl -fsSL --max-time 25 "https://api.github.com/repos/ollama/ollama/releases/latest" | jq -r .tag_name)
@@ -211,15 +234,15 @@ host_ollama_pin() { # refresh the pinned Ollama release (version/url/sha256) fro
     return 0
   fi
   yq -i ".ollama.version=\"$tag\" | .ollama.url=\"$url\" | .ollama.sha256=\"$sha\"" \
-     "$CYBERAI_HOME/config/platform.yml"
+     "$CYBERVM_HOME/config/platform.yml"
   ok "Updated config/platform.yml -> version=$tag, sha256=…${sha:0:12} (url point to $url)"
-  log "Re-run: ./cyberai host-setup   to install the refreshed release."
+  log "Re-run: ./cybervm host-setup   to install the refreshed release."
 }
 
-host_cmd() { # cyberai host setup|ollama-pin
+host_cmd() { # cybervm host setup|ollama-pin
   case "${1:-setup}" in
     setup)      shift || true; host_setup "$@" ;;
     ollama-pin) shift || true; host_ollama_pin "$@" ;;
-    *) die "usage: cyberai host setup|ollama-pin" ;;
+    *) die "usage: cybervm host setup|ollama-pin" ;;
   esac
 }

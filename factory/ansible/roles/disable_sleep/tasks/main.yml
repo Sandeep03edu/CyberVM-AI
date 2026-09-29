@@ -34,7 +34,7 @@
 
 - name: Install the session-time idle-power script
   ansible.builtin.copy:
-    dest: /usr/local/bin/cyberai-idle-power-off
+    dest: /usr/local/bin/cybervm-idle-power-off
     owner: root
     group: root
     mode: "0755"
@@ -66,16 +66,16 @@
 
 - name: Autostart the idle-power-off script in every XFCE session
   ansible.builtin.copy:
-    dest: /etc/xdg/autostart/cyberai-idle-power-off.desktop
+    dest: /etc/xdg/autostart/cybervm-idle-power-off.desktop
     owner: root
     group: root
     mode: "0644"
     content: |
       [Desktop Entry]
       Type=Application
-      Name=CyberAI idle power off
+      Name=CyberVM idle power off
       Comment=Lab image must never sleep, suspend, hibernate or blank on idle
-      Exec=/usr/local/bin/cyberai-idle-power-off
+      Exec=/usr/local/bin/cybervm-idle-power-off
       Terminal=false
       NoDisplay=true
       X-GNOME-Autostart-enabled=true

@@ -1,9 +1,9 @@
-# lib/common.sh — shared helpers (sourced by cyberai and all lib/*.sh)
+# lib/common.sh — shared helpers (sourced by cybervm and all lib/*.sh)
 
 # ── logging ──────────────────────────────────────────────────
 _c() { [ -t 1 ] && printf '%s' "$1" || true; }
 RED=$(_c $'\033[31m'); GRN=$(_c $'\033[32m'); YLW=$(_c $'\033[33m'); BLU=$(_c $'\033[34m'); RST=$(_c $'\033[0m')
-log()  { printf '%s[cyberai]%s %s\n' "$BLU" "$RST" "$*"; }
+log()  { printf '%s[cybervm]%s %s\n' "$BLU" "$RST" "$*"; }
 ok()   { printf '%s[ ok ]%s %s\n'  "$GRN" "$RST" "$*"; }
 warn() { printf '%s[warn]%s %s\n'  "$YLW" "$RST" "$*" >&2; }
 err()  { printf '%s[fail]%s %s\n'  "$RED" "$RST" "$*" >&2; }
@@ -11,24 +11,24 @@ die()  { err "$*"; exit 1; }
 
 # ── env loading ──────────────────────────────────────────────
 load_env() {
-  local envf="$CYBERAI_HOME/.cyberai.env"
+  local envf="$CYBERVM_HOME/.cybervm.env"
   if [ ! -f "$envf" ]; then
-    warn ".cyberai.env not found — using .cyberai.env.example defaults."
-    warn "Run: cp .cyberai.env.example .cyberai.env  (then edit CYBERAI_ROOT if needed)"
-    envf="$CYBERAI_HOME/.cyberai.env.example"
+    warn ".cybervm.env not found — using .cybervm.env.example defaults."
+    warn "Run: cp .cybervm.env.example .cybervm.env  (then edit CYBERVM_ROOT if needed)"
+    envf="$CYBERVM_HOME/.cybervm.env.example"
   fi
   # shellcheck disable=SC1090
   set -a; source "$envf"; set +a
-  : "${CYBERAI_ROOT:?CYBERAI_ROOT unset}"
+  : "${CYBERVM_ROOT:?CYBERVM_ROOT unset}"
 }
 
 # ── yaml (needs yq) ──────────────────────────────────────────
 have() { command -v "$1" >/dev/null 2>&1; }
 yq_get() { # yq_get <file> <expr>
-  have yq || die "yq not installed (run: cyberai host-setup)"
+  have yq || die "yq not installed (run: cybervm host-setup)"
   yq -r "$2" "$1"
 }
-platform() { yq_get "$CYBERAI_HOME/config/platform.yml" "$1"; }
+platform() { yq_get "$CYBERVM_HOME/config/platform.yml" "$1"; }
 
 # ── VirtualBox helpers ───────────────────────────────────────
 vbox()      { VBoxManage "$@"; }
@@ -103,17 +103,17 @@ confirm() { # confirm "<prompt>" — returns 0 only on typed 'yes'
   local ans; read -r -p "$1 (type 'yes'): " ans; [ "$ans" = "yes" ]
 }
 
-require_off() { vm_running "$1" && die "VM '$1' is running; stop it first (cyberai stop $1)"; return 0; }
+require_off() { vm_running "$1" && die "VM '$1' is running; stop it first (cybervm stop $1)"; return 0; }
 
 # ── host-setup readiness gate ────────────────────────────────
-# host-setup writes .cyberai.host-ready ONLY after every step (incl. the KVM/AI
+# host-setup writes .cybervm.host-ready ONLY after every step (incl. the KVM/AI
 # network) has completed. Downstream commands must not run on a half-set host.
 host_setup_done() {
-  [ -f "$CYBERAI_HOME/.cyberai.host-ready" ] && [ -s "$CYBERAI_HOME/.cyberai.netif" ]
+  [ -f "$CYBERVM_HOME/.cybervm.host-ready" ] && [ -s "$CYBERVM_HOME/.cybervm.netif" ]
 }
 require_host_setup() {
   host_setup_done && return 0
-  die "Host not fully configured yet. Run and FINISH: ./cyberai host-setup"
+  die "Host not fully configured yet. Run and FINISH: ./cybervm host-setup"
 }
 
 # host free RAM in MB
