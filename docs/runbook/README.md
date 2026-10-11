@@ -14,3 +14,4 @@ gate you must pass before moving on. `$` = run on the Ubuntu host; `kali$` = ins
 - `08-offline-test.md` — the final air-gapped acceptance test
 - `09-troubleshooting.md` — common problems + fixes
 - `recovery.md`, `ssd-migration.md`, `new-machine.md` — occasional procedures
+- [`../cheatsheet.html`](../cheatsheet.html) — every command on one printable page (A4 landscape)

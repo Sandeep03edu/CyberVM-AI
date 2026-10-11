@@ -8,10 +8,16 @@ $ sudo update-initramfs -u
 ```
 
 **`doctor` says Ollama reachable on loopback**
-Tighten `OLLAMA_HOST` in `/etc/systemd/system/ollama.service` to `192.168.57.1:11434`, then
+Tighten `OLLAMA_HOST` in `/etc/systemd/system/ollama.service` to `$CYBERVM_HOST_IP:11434`, then
 `sudo systemctl daemon-reload && sudo systemctl restart ollama`.
 
-**Guest can't reach 192.168.57.1**
+**`ifconfig` doesn't show $CYBERVM_HOST_IP / Ollama is `failed` after a reboot**
+Expected after a reboot: the host-only adapter comes back DOWN with no address until something uses
+it, so Ollama cannot bind (`bind: cannot assign requested address`). `cybervm start`, `ai`, `rag` and
+`golden` re-apply the address and restart Ollama on their own. `./cybervm doctor` shows it as the
+`AI-plane address live` row; `ip -br addr` (unlike plain `ifconfig`) lists the adapter even when down.
+
+**Guest can't reach $CYBERVM_HOST_IP**
 Check the clone has NIC2 host-only on the cybervm interface: `VBoxManage showvminfo <vm> | grep -i nic`.
 Re-apply: `./cybervm net <vm> offline` (VM off).
 
@@ -22,8 +28,8 @@ Guest Additions may not be running yet. Wait longer, or open the GUI once to con
 Confirm `ssh -i ~/.config/cybervm/id_ed25519 kali@<ip> true` works; the key was installed in Phase 2.
 
 **ufw blocks Docker RAG port**
-Docker publishes bypass ufw; we bind compose ports to `192.168.57.1` explicitly. Verify with
-`ss -ltnp | grep 8088` — it should show `192.168.57.1:8088`, not `0.0.0.0`.
+Docker publishes bypass ufw; we bind compose ports to `$CYBERVM_HOST_IP` explicitly. Verify with
+`ss -ltnp | grep 8088` — it should show `$CYBERVM_HOST_IP:8088`, not `0.0.0.0`.
 
 **Disk filling up**
 Three usual causes, in the order worth checking:

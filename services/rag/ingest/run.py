@@ -38,7 +38,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 
 QDRANT = os.environ.get("QDRANT_URL", "http://qdrant:6333")
-OLLAMA = os.environ.get("OLLAMA_URL", "http://192.168.57.1:11434")
+OLLAMA = os.environ.get("OLLAMA_URL", "")  # set by docker-compose from .cybervm.env, or --embed
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
 STATE_FILE = os.environ.get("CYBERVM_STATE_FILE", "/state/cybervm_rag_state.json")
 GIT_CACHE = os.environ.get("CYBERVM_GIT_CACHE", "/state/git-cache")
@@ -442,4 +442,6 @@ if __name__ == "__main__":
         QDRANT = a.qdrant
     if a.embed:
         OLLAMA = a.embed
+    if not OLLAMA:
+        ap.error("no Ollama endpoint: pass --embed or set OLLAMA_URL (cybervm rag update does both)")
     run(a.layer, a.only)

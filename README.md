@@ -30,14 +30,14 @@ From the design discussion in `AIPlan/` (the requirements source of truth), the 
 
 ```
 Ubuntu host ── ./cybervm
- ├─ Ollama (native)   192.168.57.1:11434     ← local models, unloads when idle
- ├─ RAG (docker)      192.168.57.1:8088      ← qdrant + REST/MCP + tiered ingest
+ ├─ Ollama (native)   $CYBERVM_HOST_IP:11434 ← local models, unloads when idle
+ ├─ RAG (docker)      $CYBERVM_HOST_IP:8088  ← qdrant + REST/MCP + tiered ingest
  └─ VirtualBox
       CyberVM-Kali-Base   (verified official image; untouched)
       CyberVM-Kali-Golden (Ansible-provisioned; snapshot golden-<date>)
       kali-<name>         (disposable LINKED clones)
         NIC1 internet plane: none | nat | bridged
-        NIC2 AI plane: host-only 192.168.57.0/24 → reaches ONLY Ollama + RAG
+        NIC2 AI plane: host-only $CYBERVM_NET_CIDR → reaches ONLY Ollama + RAG
 ```
 
 **The source of truth is `config/` + `factory/` + `services/` in git — not the VM images.**

@@ -5,10 +5,9 @@
   become: true
   vars:
     cybervm_config: "{{ playbook_dir }}/../../../config"
-    host_ai_ip: "192.168.57.1"
-    ollama_port: "11434"
-    rag_port: "8088"
-    vm_user: "kali"
+    # host_ai_ip, ai_plane_cidr, ollama_port, rag_port and vm_user are passed in
+    # from .cybervm.env by lib/golden.sh (-e). Not defaulted here on purpose: a
+    # run without them must fail, not bake a stale address into the image.
   roles:
     - common
     - hardening

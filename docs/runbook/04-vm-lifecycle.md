@@ -100,7 +100,7 @@ $ ./cybervm new work-02 && ./cybervm start work-02 --net offline
 #   (in guest) ls ~/MARKER  -> should NOT exist
 # network boundary (in an offline guest):
 kali$ curl -m5 https://kali.org         # FAILS (no internet)
-kali$ curl -s 192.168.57.1:11434/api/tags   # WORKS (AI plane)
-kali$ nc -zv 192.168.57.1 22            # BLOCKED (ufw)
+kali$ curl -s $OLLAMA_HOST/api/tags     # WORKS (AI plane)
+kali$ nc -zv ${OLLAMA_HOST%:*} 22       # BLOCKED (ufw)
 ```
 ✅ **Pass gate:** marker absent in work-02; golden snapshot unchanged; offline curl fails, Ollama works, ssh-to-host blocked.

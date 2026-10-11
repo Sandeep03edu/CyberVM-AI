@@ -46,6 +46,14 @@ INV
   echo "$inv"
 }
 
+# The guest's view of the AI plane comes from .cybervm.env — the playbook holds no
+# address of its own, so a changed CYBERVM_HOST_IP always reaches the image.
+_ansible_extra() {
+  ANSIBLE_EXTRA=(-e "host_ai_ip=$CYBERVM_HOST_IP" -e "ai_plane_cidr=$CYBERVM_NET_CIDR"
+                 -e "ollama_port=$CYBERVM_OLLAMA_PORT" -e "rag_port=$CYBERVM_RAG_PORT"
+                 -e "vm_user=$CYBERVM_VM_USER")
+}
+
 golden_build() {
   local base golden snap
   source "$CYBERVM_HOME/lib/pins.sh"
@@ -73,9 +81,10 @@ golden_build() {
   local inv; inv=$(_write_inventory "$ip")
 
   log "Running Ansible provisioning playbook…"
+  local ANSIBLE_EXTRA; _ansible_extra
   ( cd "$CYBERVM_HOME/factory/ansible" && \
     ansible-galaxy collection install -r requirements.yml >/dev/null && \
-    ansible-playbook -i "$inv" playbooks/golden.yml )
+    ansible-playbook -i "$inv" "${ANSIBLE_EXTRA[@]}" playbooks/golden.yml )
 
   log "Cleaning apt caches + shutting down…"
   ssh -i "$CYBERVM_SSH_KEY" -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=10 \
@@ -106,7 +115,8 @@ golden_verify() {
   ip=$(_golden_ip "$golden") || die "No IP."
   local inv; inv=$(_write_inventory "$ip")
   log "Ansible check-mode (expect: no changes)…"
-  ( cd "$CYBERVM_HOME/factory/ansible" && ansible-playbook -i "$inv" playbooks/golden.yml --check ) || warn "check-mode reported changes."
+  local ANSIBLE_EXTRA; _ansible_extra
+  ( cd "$CYBERVM_HOME/factory/ansible" && ansible-playbook -i "$inv" "${ANSIBLE_EXTRA[@]}" playbooks/golden.yml --check ) || warn "check-mode reported changes."
   log "SSH smoke tests…"
   ssh -i "$CYBERVM_SSH_KEY" -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=10 \
       "${CYBERVM_VM_USER}@$ip" '

@@ -10,7 +10,7 @@
   ignore_errors: true
 
 - name: Allow SSH only on the AI-plane subnet (provisioning)
-  community.general.ufw: { rule: allow, port: "22", proto: tcp, src: "192.168.57.0/24" }
+  community.general.ufw: { rule: allow, port: "22", proto: tcp, src: "{{ ai_plane_cidr }}" }
   ignore_errors: true
 
 - name: Enable ufw

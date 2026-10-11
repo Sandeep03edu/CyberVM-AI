@@ -96,6 +96,7 @@ case "$cmd" in
   pins)        source "$CYBERVM_HOME/lib/pins.sh";     pins_dispatch "$@" ;;
   base|golden|release|import|new|resize|start|net|ai|rag|transfer|secrets|backup)
                require_host_setup
+               case "$cmd" in start|ai|rag|golden) ensure_ai_plane ;; esac
                case "$cmd" in
                  base)     source "$CYBERVM_HOME/lib/base.sh";      base_dispatch "$@" ;;
                  golden)   source "$CYBERVM_HOME/lib/golden.sh";    golden_dispatch "$@" ;;

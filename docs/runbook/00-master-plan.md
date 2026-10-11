@@ -41,8 +41,8 @@ The Kali download for VirtualBox is a **`.7z` containing a `.vbox` + `.vdi`** (a
 
 ```
 UBUNTU HOST  ── ./cybervm host-setup (one script, any machine)
- ├─ Ollama (native systemd)     bind 192.168.57.1:11434   models → models/ollama
- ├─ RAG (docker compose)        bind 192.168.57.1:8088    data   → rag/data
+ ├─ Ollama (native systemd)     bind $CYBERVM_HOST_IP:11434   models → models/ollama
+ ├─ RAG (docker compose)        bind $CYBERVM_HOST_IP:8088    data   → rag/data
  │    qdrant + rag-api (REST + MCP /mcp) + host systemd-user ingest timers
  ├─ ufw on cybervm host-only net: allow only 11434, 8088 (+8000 during transfer)
  └─ VirtualBox
@@ -50,7 +50,7 @@ UBUNTU HOST  ── ./cybervm host-setup (one script, any machine)
       ├─ CyberVM-Kali-Golden  (Ansible-provisioned; snapshot golden-<date>; rebuilt via `golden reset`)
       └─ kali-<name>          (LINKED clones of the golden snapshot; disposable)
            NIC1 internet plane: none | nat(localhost-off) | bridged(confirm)
-           NIC2 AI plane: host-only "cybervm" 192.168.57.0/24 → reaches Ollama+RAG only
+           NIC2 AI plane: host-only "cybervm" $CYBERVM_NET_CIDR → reaches Ollama+RAG only
 ```
 
 **Golden disk growth.** Each `golden build` re-provisions in place and snapshots again, and VirtualBox
@@ -109,13 +109,13 @@ $ ./cybervm host-setup
 ```
 What it does, each step logged: preflight (VT-x, RAM, disk, KVM/VBox conflict) → apt install ansible-core(pipx), yq, jq,
 sshpass, ufw → install pinned **Ollama** tarball (sha256-checked, not `curl|sh`) with a systemd override binding
-`192.168.57.1:11434`, `OLLAMA_MODELS=$CYBERVM_ROOT/models/ollama`, keep-alive 5m, 1 model, ctx 8192, kv q8_0 →
-create host-only net `192.168.57.1/24` (DHCP .100–.199) → ufw rules → `ollama pull qwen2.5:3b-instruct nomic-embed-text` →
+`$CYBERVM_HOST_IP:11434`, `OLLAMA_MODELS=$CYBERVM_ROOT/models/ollama`, keep-alive 5m, 1 model, ctx 8192, kv q8_0 →
+create host-only net `$CYBERVM_HOST_IP/24` (DHCP .100–.199) → ufw rules → `ollama pull qwen2.5:3b-instruct nomic-embed-text` →
 write `~/.config/cybervm/secrets.env` (mode 600).
 ```
 $ ./cybervm doctor      # PASS/FAIL table
 ```
-**Verify:** doctor all-PASS: VBox ok, VT-x yes, host-only IP up, Ollama reachable on 192.168.57.1:11434 and **not** on 0.0.0.0, ufw active, disk/RAM ok. ✅
+**Verify:** doctor all-PASS: VBox ok, VT-x yes, host-only IP up, Ollama reachable on $CYBERVM_HOST_IP:11434 and **not** on 0.0.0.0, ufw active, disk/RAM ok. ✅
 
 ## Phase 2 — Create the base image from your `.7z` (host)
 ```
@@ -150,13 +150,13 @@ common, hardening, security_tools, burp, ai_clients, ai_guest, rag_client, disab
 - **ai_clients** installs pinned opencode, `@anthropic-ai/claude-code`, `@openai/codex`; **ai_guest** installs a
   guest `cybervm` CLI (`ai run|list|pull|rm|opencode`) that talks to host Ollama over the AI plane; **rag_client** creates
   the client config dirs; **disable_sleep** keeps the VM awake; **mcp_servers** reads `config/mcp/servers.yml`, bakes the
-  Playwright MCP + Chromium into `/opt/ms-playwright`, and writes all three client configs pointing at `192.168.57.1`
+  Playwright MCP + Chromium into `/opt/ms-playwright`, and writes all three client configs pointing at `$CYBERVM_HOST_IP`
   (Ollama OpenAI-compat endpoint + MCP `cybervm-rag`).
 ```
 $ ./cybervm golden verify
 ```
 **Verify:** Ansible check-mode reports no changes; SSH smoke tests pass (`nmap --version`, burp jar present, extension
-hashes match, `opencode --version`, `guest cybervm ai run OK`, `curl 192.168.57.1:11434/api/tags`). ✅
+hashes match, `opencode --version`, `guest cybervm ai run OK`, `curl $OLLAMA_HOST/api/tags`). ✅
 
 ## Phase 4 — VM lifecycle, network, transfer, secrets (host) — ChatGPT "Milestone 1"
 ```
@@ -169,7 +169,7 @@ $ ./cybervm secrets push work-01 anthropic      # keys → VM tmpfs only
 $ ./cybervm list
 ```
 **Verify (isolation matrix):** create work-01→marker file→destroy; work-02 has no marker & golden snapshot unchanged;
-in `offline`: `curl -m5 https://kali.org` fails, `curl 192.168.57.1:11434` works, `nc -zv 192.168.57.1 22` blocked;
+in `offline`: `curl -m5 https://kali.org` fails, `curl $OLLAMA_HOST` works, `nc -zv ${OLLAMA_HOST%:*} 22` blocked;
 in `nat`: internet works, host 127.0.0.1 unreachable. ✅
 
 ## Phase 5 — Local AI + benchmark (host) + guest `cybervm` CLI (inside clones)
@@ -183,7 +183,7 @@ kali$ source /etc/profile.d/cybervm.sh
 kali$ cybervm ai run "what does nmap -sV do?"       # streams from host Ollama, offline
 kali$ cybervm ai opencode "what does nmap -sV do?"  # opencode wrapper → --model ollama/qwen2.5:3b-instruct
 ```
-**Verify:** from a clone in `offline` mode, `cybervm ai run` answers using qwen2.5:3b-instruct via `192.168.57.1:11434`,
+**Verify:** from a clone in `offline` mode, `cybervm ai run` answers using qwen2.5:3b-instruct via `$CYBERVM_HOST_IP:11434`,
 and `cybervm ai opencode` answers the same way through opencode. ✅
 
 ## Phase 6 — RAG service (host)

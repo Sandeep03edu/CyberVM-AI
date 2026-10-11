@@ -116,5 +116,26 @@ require_host_setup() {
   die "Host not fully configured yet. Run and FINISH: ./cybervm host-setup"
 }
 
+# ── AI plane (host-only adapter) ─────────────────────────────
+# VirtualBox remembers the adapter's address, but after a host reboot the kernel
+# interface comes back DOWN with no address until a VM attaches to it. Nothing
+# can bind CYBERVM_HOST_IP in that window, so Ollama fails at boot. Re-apply the
+# address and revive Ollama before any command that needs the plane.
+ai_plane_if()   { cat "$CYBERVM_HOME/.cybervm.netif" 2>/dev/null; }
+ai_plane_live() { ip -4 -o addr show dev "$1" 2>/dev/null | grep -qF " ${CYBERVM_HOST_IP}/"; }
+ensure_ai_plane() {
+  local ifn; ifn="$(ai_plane_if)"; [ -n "$ifn" ] || return 0
+  if ! ai_plane_live "$ifn"; then
+    log "AI plane: bringing up $ifn (${CYBERVM_HOST_IP})…"
+    VBoxManage hostonlyif ipconfig "$ifn" --ip "$CYBERVM_HOST_IP" --netmask 255.255.255.0 \
+      || die "could not configure $ifn — re-run: cybervm host-setup"
+  fi
+  if ! systemctl is-active --quiet ollama; then
+    log "AI plane: Ollama is not running — restarting it (sudo)…"
+    sudo systemctl reset-failed ollama 2>/dev/null || true
+    sudo systemctl restart ollama || warn "Ollama did not start — see: journalctl -u ollama -n 20"
+  fi
+}
+
 # host free RAM in MB
 host_free_mb() { awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo; }

@@ -23,7 +23,7 @@ CVE/KEV/OWASP/ATT&CK text — tagged with a trust tier and dates — and answers
 that.
 
 Everything runs on the **host**, bound to the internal AI-plane IP
-`192.168.57.1` (nothing is exposed to the internet). Four moving parts:
+`$CYBERVM_HOST_IP` (nothing is exposed to the internet). Four moving parts:
 
 | Part | What it is | Where |
 |------|------------|-------|
@@ -36,7 +36,7 @@ The only outbound traffic is the ingester fetching public sources (NVD, CISA,
 GitHub, OWASP repos, etc.). Queries and embeddings stay on the box.
 
 ```
-                         ┌──────────────── host (192.168.57.1) ────────────────┐
+                         ┌──────────────── host ($CYBERVM_HOST_IP) ────────────┐
   public internet        │                                                      │
   (NVD, CISA, GitHub, ───┼──►  ingest ──embeds via──►  Ollama (nomic-embed-text)│
    OWASP, nuclei…)       │      │                          │                    │
@@ -229,7 +229,7 @@ your question ─► embed (Ollama) ─► vector search live+stable+personal
 
 ### 1. REST (simplest to eyeball)
 ```bash
-curl -s 192.168.57.1:8088/search \
+curl -s $CYBERVM_RAG_URL/search \
   -d '{"query":"KEV added recently","tier_max":1}' | jq .
 ```
 Filters you can pass: `tier_max` (max trust tier, default 4), `since` (ISO date,
@@ -276,7 +276,7 @@ in its config (it ships disabled). Nothing else to do — the golden image alrea
 knows the URL.
 
 ### Cloud / hosted LLMs (Claude.ai, ChatGPT web, a hosted agent) — careful
-The service is bound to `192.168.57.1`, a **host-only, non-routable IP**. A cloud
+The service is bound to `$CYBERVM_HOST_IP`, a **host-only, non-routable IP**. A cloud
 model literally **cannot reach it** unless you deliberately expose or tunnel it.
 Before you do, weigh two things:
 
@@ -300,7 +300,7 @@ index or the endpoint itself. Don't expose 8088 directly.
 
 ```bash
 # lifecycle
-cybervm rag up                 # start qdrant + rag-api on 192.168.57.1:8088
+cybervm rag up                 # start qdrant + rag-api on $CYBERVM_HOST_IP:8088
 cybervm rag status             # per-collection counts (proves it responds)
 cybervm rag down               # stop the stack (does not touch any VM)
 
@@ -322,7 +322,7 @@ dedup ledger → `rag/state/cybervm_rag_state.json` · git clones →
 **Verify anytime:**
 ```bash
 cybervm rag status
-curl -s 192.168.57.1:8088/search -d '{"query":"KEV added recently","tier_max":1}' | jq .
+curl -s $CYBERVM_RAG_URL/search -d '{"query":"KEV added recently","tier_max":1}' | jq .
 ```
 
 See `06-rag.md` for the operator runbook and `05-local-ai.md` §5.3 for the

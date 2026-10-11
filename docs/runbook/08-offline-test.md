@@ -8,8 +8,8 @@ $ ./cybervm new offline-demo && ./cybervm start offline-demo --net offline
 kali$ source /etc/profile.d/cybervm.sh
 kali$ cybervm ai run "Explain this HTTP 500 with a SQL error and my next test"   # local model answers (guest cybervm CLI)
 kali$ cybervm ai opencode "Explain this HTTP 500 with a SQL error and my next test"  # or via opencode
-kali$ curl -s 192.168.57.1:8088/search -d '{"query":"sql injection","tier_max":2}' | jq '.results[0]'
-kali$ nmap -sV <a lab VM IP on 192.168.57.0/24>
+kali$ curl -s $CYBERVM_RAG_URL/search -d '{"query":"sql injection","tier_max":2}' | jq '.results[0]'
+kali$ nmap -sV <a lab VM IP on the AI-plane subnet>
 $ ./cybervm destroy offline-demo
 ```
 ✅ **Pass gate:** local AI answers, RAG returns stable-layer results, nmap runs; only cloud models and

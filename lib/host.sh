@@ -6,8 +6,8 @@ host_setup() {
   _host_apt
   _host_cli_link
   _host_ssh_key
+  _host_network   # before Ollama: it binds the address this creates
   _host_ollama
-  _host_network
   _host_ufw
   _host_secrets_stub
   _host_models
@@ -135,11 +135,13 @@ _host_ollama() {
 [Unit]
 Description=Ollama (CyberVM)
 After=network-online.target
+StartLimitIntervalSec=0
 [Service]
 ExecStart=/usr/bin/ollama serve
 User=ollama
 Group=ollama
 Restart=always
+RestartSec=5
 Environment="OLLAMA_HOST=${CYBERVM_HOST_IP}:${CYBERVM_OLLAMA_PORT}"
 Environment="OLLAMA_MODELS=/var/lib/ollama"
 Environment="OLLAMA_KEEP_ALIVE=5m"

@@ -27,6 +27,10 @@ doctor() {
   # host-only interface with our IP
   VBoxManage list hostonlyifs | awk -v ip="$CYBERVM_HOST_IP" '/^IPAddress:/{if($2==ip)f=1} END{exit !f}'
   _row "host-only net $CYBERVM_HOST_IP" $? ""
+  # configured is not the same as up: the address vanishes from the kernel on reboot
+  local aif; aif="$(ai_plane_if)"
+  ai_plane_live "${aif:-none}"
+  _row "AI-plane address live" $? "${aif:-no adapter} (restored by: cybervm start|ai|rag)"
 
   # Ollama reachable on private IP but NOT on 0.0.0.0
   curl -fsm3 "http://${CYBERVM_HOST_IP}:${CYBERVM_OLLAMA_PORT}/api/tags" >/dev/null 2>&1

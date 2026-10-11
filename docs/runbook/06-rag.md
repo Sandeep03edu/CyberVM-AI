@@ -6,7 +6,7 @@
 
 ## 6.1 Start the stack
 ```
-$ ./cybervm rag up          # docker: qdrant + rag-api on 192.168.57.1:8088
+$ ./cybervm rag up          # docker: qdrant + rag-api on $CYBERVM_HOST_IP:8088
 $ ./cybervm rag status
 ```
 
@@ -38,7 +38,7 @@ kali$ opencode run "Which CVEs were added to CISA KEV recently? cite tier and da
 ```
 Or hit REST directly:
 ```
-kali$ curl -s 192.168.57.1:8088/search -d '{"query":"KEV added recently","tier_max":1}' | jq .
+kali$ curl -s $CYBERVM_RAG_URL/search -d '{"query":"KEV added recently","tier_max":1}' | jq .
 ```
 
 ## 6.4 Verify

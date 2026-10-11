@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from qdrant_client import QdrantClient
 
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://qdrant:6333")
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://192.168.57.1:11434")
+OLLAMA_URL = os.environ["OLLAMA_URL"]  # set by docker-compose from .cybervm.env
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
 COLLECTIONS = ["stable", "live", "personal"]
 
