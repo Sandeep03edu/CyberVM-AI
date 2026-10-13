@@ -4,53 +4,77 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CyberVM Cheatsheet</title>
-<!-- One printed page. Print with: A4, landscape, margins "Default", scale 100%, background graphics ON. -->
+<!-- Two pages (one sheet, both sides). Print with: A4, landscape, margins "Default", scale 100%, background graphics ON. -->
 <style>
   @page { size: A4 landscape; margin: 7mm; }
   :root { --ink:#000; --mute:#444; --rule:#999; --tint:#e9e9e9; --bar:#111; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { background: #777; }
   body {
-    width: 283mm; height: 196mm; margin: 6mm auto; padding: 0; overflow: hidden;
-    background: #fff; color: var(--ink);
+    color: var(--ink);
     font: 6.6pt/1.3 "DejaVu Sans", "Liberation Sans", Arial, Helvetica, sans-serif;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    display: flex; flex-direction: column;
   }
-  @media screen { body { padding: 5mm; width: 293mm; height: 206mm; box-shadow: 0 2px 14px rgba(0,0,0,.5); } }
-  @media print  { html { background: #fff; } body { margin: 0; } }
+  .page { width: 283mm; height: 196mm; overflow: hidden; background: #fff; display: flex; flex-direction: column; break-after: page; }
+  .page:last-child { break-after: auto; }
+  @media screen { .page { box-sizing: content-box; padding: 5mm; margin: 6mm auto; box-shadow: 0 2px 14px rgba(0,0,0,.5); } }
+  @media print  { html { background: #fff; } }
 
-  header { display: flex; align-items: baseline; gap: 4mm; border-bottom: 1.2pt solid var(--ink); padding-bottom: 1mm; margin-bottom: 1.6mm; }
+  code, kbd, .o td:first-child, .m td:first-child, .seq li {
+    font-family: "DejaVu Sans Mono", "Liberation Mono", Consolas, Menlo, monospace; font-size: 6.9pt; font-weight: bold;
+  }
+  kbd { font-size: inherit; }
+
+  header { display: flex; align-items: baseline; gap: 4mm; border-bottom: 1.2pt solid var(--ink); padding-bottom: 1mm; margin-bottom: 1.5mm; }
   header h1 { font-size: 11pt; white-space: nowrap; }
   header p { color: var(--mute); }
-  header .key { margin-left: auto; display: flex; gap: 3mm; align-items: center; white-space: nowrap; }
-  .cols { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4.5mm; min-height: 0; }
-  .col { display: flex; flex-direction: column; gap: 1.2mm; min-width: 0; }
+  header .key { margin-left: auto; display: flex; gap: 3mm; white-space: nowrap; }
+  .swatch { padding: 0 1.2mm; }
 
-  h2 { font-size: 7pt; text-transform: uppercase; letter-spacing: .5pt; color: #fff; background: var(--bar); padding: .5mm 1.5mm; margin-bottom: .6mm; }
+  .grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5mm 4.5mm; align-content: start; }
+  .w2 { grid-column: span 2; }
+  .w3 { grid-column: span 3; }
+  .col { display: flex; flex-direction: column; gap: 1.5mm; min-width: 0; }
+
+  h2 { font-size: 7pt; text-transform: uppercase; letter-spacing: .5pt; color: #fff; background: var(--bar); padding: .5mm 1.5mm; margin-bottom: .5mm; }
   h2 small { font-weight: normal; text-transform: none; letter-spacing: 0; opacity: .85; }
 
-  /* one command per row: command left, note right; the note drops below when there is no room */
-  .r { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 2mm; padding: .28mm 1mm; border-bottom: .3pt dotted var(--rule); }
-  .r code { font: 6.9pt/1.28 "DejaVu Sans Mono", "Liberation Mono", Consolas, Menlo, monospace; font-weight: bold; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .r span { margin-left: auto; color: var(--mute); text-align: right; }
-  .r code i { font-style: normal; font-weight: normal; }
-  .g { background: var(--tint); border-left: 1.6pt solid var(--ink); }
-  .g code::before { content: "kali$ "; font-weight: normal; }
-  kbd { font: inherit; font-family: "DejaVu Sans Mono", "Liberation Mono", Consolas, monospace; font-weight: bold; }
-  .swatch { display: inline-block; padding: 0 1.2mm; }
+  /* syntax line that opens a block */
+  .syn { padding: .5mm 1mm; border: .6pt solid var(--ink); margin-bottom: .4mm; }
+  .syn code { white-space: pre-wrap; }
+  .syn span { color: var(--mute); float: right; }
 
-  .loop { border: 1pt solid var(--ink); padding: 1mm 1.5mm; }
-  .loop b { font-size: 7pt; text-transform: uppercase; letter-spacing: .5pt; }
-  .loop ol { list-style: none; display: flex; flex-wrap: wrap; gap: .4mm 1.2mm; margin-top: .6mm; }
-  .loop li { font: bold 6.9pt/1.3 "DejaVu Sans Mono", "Liberation Mono", Consolas, monospace; }
-  .loop li:not(:last-child)::after { content: " →"; font-weight: normal; }
-
+  /* option table: option | what it does and when to use it */
   table { width: 100%; border-collapse: collapse; }
-  td { padding: .25mm 1mm; border-bottom: .3pt dotted var(--rule); vertical-align: top; }
-  td:first-child { font: bold 6.9pt/1.28 "DejaVu Sans Mono", "Liberation Mono", Consolas, monospace; white-space: nowrap; width: 1%; }
+  td, th { padding: .3mm 1mm; border-bottom: .3pt dotted var(--rule); vertical-align: top; text-align: left; }
+  th { font-size: 6pt; text-transform: uppercase; letter-spacing: .3pt; border-bottom: .6pt solid var(--ink); }
+  .o td:first-child, .m td:first-child { white-space: nowrap; width: 1%; }
+  td em { font-style: normal; color: var(--mute); }
+  tr.g td { background: var(--tint); }
+  tr.g td:first-child { border-left: 1.6pt solid var(--ink); }
+  tr.g td:first-child::before, .gi::before { content: "kali$ "; font-weight: normal; }
+  /* long commands: the description sits beside the command, or drops under it when there is no room */
+  .s, .s tbody { display: block; }
+  .s tr { display: flex; flex-wrap: wrap; column-gap: 2mm; border-bottom: .3pt dotted var(--rule); }
+  .s td { border: 0; }
+  .o.s td:first-child { width: auto; flex: none; max-width: 100%; white-space: normal; }
+  .s td:last-child { flex: 1 1 26mm; text-align: right; color: var(--mute); }
+  .s tr.g { background: var(--tint); border-left: 1.6pt solid var(--ink); }
+  .s tr.g td:first-child { border-left: 0; }
+  .m td.y, .m td.n { text-align: center; font-weight: bold; white-space: nowrap; }
+  .m td.n { color: var(--mute); font-weight: normal; }
+  .note { padding: .3mm 1mm; color: var(--mute); }
+  .note b, .note kbd { color: var(--ink); }
 
-  footer { border-top: 1.2pt solid var(--ink); margin-top: 1.6mm; padding-top: 1mm; }
+  .seqs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4.5mm; }
+  .seq { border: 1pt solid var(--ink); padding: .8mm 1.5mm; }
+  .seq b { font-size: 7pt; text-transform: uppercase; letter-spacing: .4pt; }
+  .seq ol { list-style: none; counter-reset: s; margin-top: .3mm; }
+  .seq li { counter-increment: s; }
+  .seq li::before { content: counter(s) ". "; font-weight: normal; }
+  .seq li.gi::before { content: counter(s) ". kali$ "; }
+
+  footer { border-top: 1.2pt solid var(--ink); margin-top: 1.5mm; padding-top: .8mm; }
   footer ul { list-style: none; columns: 3; column-gap: 4.5mm; }
   footer li { padding-left: 2.2mm; text-indent: -2.2mm; break-inside: avoid; }
   footer li::before { content: "▪ "; }
@@ -58,188 +82,276 @@
 </head>
 <body>
 
+<!-- ═══════════════════════════ PAGE 1 ═══════════════════════════ -->
+<div class="page">
 <header>
-  <h1>CyberVM-AI cheatsheet</h1>
-  <p>Run on the Ubuntu host unless marked. First run is <kbd>./cybervm host-setup</kbd>; after that <kbd>cybervm</kbd> works from any directory.</p>
-  <div class="key"><span class="swatch">host command</span><span class="swatch g">&nbsp;kali$ = inside the VM</span></div>
+  <h1>CyberVM-AI cheatsheet · 1/2 · Working with a VM</h1>
+  <p>Run on the Ubuntu host unless marked. <kbd>&lt;name&gt;</kbd> is the short name you gave <kbd>new</kbd>.</p>
+  <div class="key"><span class="swatch">host command</span><span class="swatch" style="background:var(--tint);border-left:1.6pt solid #000">kali$ = inside the VM</span></div>
 </header>
 
-<div class="cols">
+<div class="grid">
 
-  <!-- ───────────── column 1 ───────────── -->
+  <div class="w3 seqs">
+    <div class="seq"><b>A · Offline lab (the default)</b>
+      <ol><li>cybervm new web01</li><li>cybervm start web01</li><li>cybervm snapshot web01 before-exploit</li><li>cybervm stop web01</li><li>cybervm destroy web01</li></ol></div>
+    <div class="seq"><b>B · Need internet or a cloud agent</b>
+      <ol><li>cybervm stop web01</li><li>cybervm start web01 --net nat</li><li>cybervm secrets push web01 anthropic</li><li class="gi">source /run/user/1000/cybervm/secrets.env</li><li>cybervm secrets wipe web01</li></ol></div>
+    <div class="seq"><b>C · Undo everything in a clone</b>
+      <ol><li>cybervm stop web01</li><li>cybervm restore web01 clean</li><li>cybervm start web01</li><li>cybervm list</li></ol></div>
+  </div>
+
+  <section>
+    <h2>1 · Create a VM</h2>
+    <div class="syn"><code>cybervm new &lt;name&gt; [--profile P | --ram GB [--cpus N]]</code></div>
+    <table class="o">
+      <tr><td>(no flags)</td><td>Linked clone of golden at <b>balanced</b> size, network <b>offline</b>, snapshot <kbd>clean</kbd> taken for you.</td></tr>
+      <tr><td>--profile lean</td><td>8 GB / 4 vCPU. <em>Smallest — when you want several VMs up together.</em></td></tr>
+      <tr><td>--profile balanced</td><td>12 GB / 6 vCPU. <em>The default — one VM comfortably.</em></td></tr>
+      <tr><td>--profile large</td><td>16 GB / 8 vCPU. <em>Burp + browser + heavy scans; one VM at a time.</em></td></tr>
+      <tr><td>--ram 10</td><td>Exact RAM. <kbd>10</kbd> or <kbd>10G</kbd> = GB, <kbd>10240M</kbd> = MB. <em>Min 2 GB, max host RAM.</em></td></tr>
+      <tr><td>--cpus 5</td><td>Exact vCPUs. <em>Left out → RAM in GB ÷ 2. Max = host threads.</em></td></tr>
+    </table>
+    <p class="note"><b>Rules:</b> <kbd>--profile</kbd> cannot be mixed with <kbd>--ram</kbd>/<kbd>--cpus</kbd>. There is no <kbd>--net</kbd> on <kbd>new</kbd> — set the network at <kbd>start</kbd>. Examples: <kbd>cybervm new web01 --profile lean</kbd> · <kbd>cybervm new big --ram 16 --cpus 8</kbd></p>
+  </section>
+
+  <section class="w2">
+    <h2>2 · Network mode — the main switch <small>(pick one per session; VM must be off to change it)</small></h2>
+    <table class="m">
+      <tr><th>Mode</th><th>Internet</th><th>Host AI + RAG</th><th>transfer</th><th>Use it for</th><th>Watch out</th></tr>
+      <tr><td>offline</td><td class="n">no</td><td class="y">yes</td><td class="y">yes</td><td>Everyday lab work with the local model and RAG. Default for every new clone.</td><td>No apt/pip, no cloud models, no <kbd>mcp update</kbd>.</td></tr>
+      <tr><td>airgap</td><td class="n">no</td><td class="n">no</td><td class="n">no</td><td>Running something untrusted, or proving nothing can leave the VM.</td><td><kbd>cybervm ai</kbd>, RAG and <kbd>transfer</kbd> stop working.</td></tr>
+      <tr><td>nat</td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td><td>Cloud agents (claude, codex), <kbd>apt</kbd>/<kbd>pip</kbd> installs, <kbd>cybervm mcp update</kbd>, internet targets.</td><td>VM has outbound internet. Host loopback stays blocked.</td></tr>
+      <tr><td>bridged</td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td><td>VM needs its own address on your LAN: listeners, reverse shells, LAN discovery.</td><td>Sits on your real network — breaks the sandbox. Asks you to type <kbd>yes</kbd>.</td></tr>
+    </table>
+    <table class="o">
+      <tr><td>cybervm net &lt;name&gt; &lt;mode&gt;</td><td>Set the mode and stop there. VM off. <em>The mode is stored and reused until you change it.</em></td></tr>
+      <tr><td>cybervm start &lt;name&gt; --net &lt;mode&gt;</td><td>Set the mode and boot in one step. <em>The usual way.</em></td></tr>
+      <tr><td>cybervm start &lt;name&gt;</td><td>Boot with the stored mode. <em>A new clone's stored mode is offline.</em></td></tr>
+      <tr class="g"><td>curl -m5 https://kali.org</td><td>Check from inside: answers only in nat / bridged. <kbd>curl -s $OLLAMA_HOST/api/tags</kbd> answers in every mode except airgap.</td></tr>
+    </table>
+  </section>
+
   <div class="col">
     <section>
-      <h2>1 · First-time setup <small>(once per machine, in this order)</small></h2>
-      <div class="r"><code>cp .cybervm.env.example .cybervm.env</code><span>set CYBERVM_ROOT</span></div>
-      <div class="r"><code>./cybervm host-setup</code><span>deps, AI-plane net, Ollama, ufw, PATH</span></div>
-      <div class="r"><code>cybervm doctor</code><span>readiness table — must be all PASS</span></div>
-      <div class="r"><code>cybervm pins check</code><span>Burp extension pins vs live store</span></div>
-      <div class="r"><code>cybervm pins refresh</code><span>only if check reports DRIFT</span></div>
-      <div class="r"><code>cybervm base import</code><span>register verified Kali image</span></div>
-      <div class="r"><code>cybervm golden build</code><span>Ansible-provision + snapshot</span></div>
-      <div class="r"><code>cybervm golden verify</code><span>check-mode + SSH smoke tests</span></div>
+      <h2>3 · Start, stop, list</h2>
+      <div class="syn"><code>cybervm start &lt;name&gt; [--net MODE] [--headless]</code></div>
+      <table class="o">
+        <tr><td>--net MODE</td><td><kbd>offline</kbd> | <kbd>airgap</kbd> | <kbd>nat</kbd> | <kbd>bridged</kbd> — see block 2.</td></tr>
+        <tr><td>--headless</td><td>No VM window. <em>Use for transfer/SSH-only work. Leave it out when you need the desktop, Burp or the Playwright browser.</em></td></tr>
+        <tr><td>cybervm stop &lt;name&gt;</td><td>Clean ACPI shutdown.</td></tr>
+        <tr><td>cybervm list</td><td>Every VM with state, RAM and vCPU.</td></tr>
+      </table>
+      <p class="note"><b>“Not enough host RAM”:</b> start keeps <kbd>CYBERVM_HOST_RESERVE_MB</kbd> (6144) free for the host. Stop another VM or <kbd>resize</kbd> this one smaller.</p>
     </section>
-
-    <div class="loop">
-      <b>Daily loop</b>
-      <ol>
-        <li>cybervm new work-01</li>
-        <li>cybervm start work-01 --net offline</li>
-        <li>…work in the VM…</li>
-        <li>cybervm stop work-01</li>
-        <li>cybervm destroy work-01</li>
-      </ol>
-    </div>
-
     <section>
-      <h2>2 · VM lifecycle</h2>
-      <div class="r"><code>cybervm new &lt;name&gt;</code><span>linked clone, 12GB/6, offline, snapshot “clean”</span></div>
-      <div class="r"><code>cybervm new &lt;name&gt; --profile lean|balanced|large</code><span>8 · 12 · 16 GB</span></div>
-      <div class="r"><code>cybervm new &lt;name&gt; --ram 10 [--cpus 5]</code><span>exact; cpus default GB÷2</span></div>
-      <div class="r"><code>cybervm resize &lt;name&gt; [--ram GB] [--cpus N]</code><span>VM off</span></div>
-      <div class="r"><code>cybervm start &lt;name&gt; [--net MODE] [--headless]</code><span>MODE: see 3</span></div>
-      <div class="r"><code>cybervm stop &lt;name&gt;</code><span>ACPI shutdown</span></div>
-      <div class="r"><code>cybervm list</code><span>VMs, state, RAM, vCPU</span></div>
-      <div class="r"><code>cybervm snapshot &lt;name&gt; &lt;tag&gt;</code><span>save a point to return to</span></div>
-      <div class="r"><code>cybervm restore &lt;name&gt; &lt;tag&gt;</code><span>VM off</span></div>
-      <div class="r"><code>cybervm restore &lt;name&gt; clean</code><span>back to the fresh clone</span></div>
-      <div class="r"><code>cybervm destroy &lt;name&gt;</code><span>deletes clone + disks (type yes)</span></div>
+      <h2>4 · Resize <small>(VM off)</small></h2>
+      <div class="syn"><code>cybervm resize &lt;name&gt; [--ram GB] [--cpus N]</code></div>
+      <table class="o">
+        <tr><td>--ram 16</td><td>New RAM; vCPU follows (÷ 2 → 8) unless you also pass <kbd>--cpus</kbd>.</td></tr>
+        <tr><td>--cpus 4</td><td>vCPU only; RAM stays as it is.</td></tr>
+      </table>
+      <p class="note">At least one flag is required. <kbd>--profile</kbd> is not accepted here. Disk size never changes. Base and Golden are refused.</p>
     </section>
-
     <section>
-      <h2>3 · Network mode <small>(VM must be off)</small></h2>
-      <div class="r"><code>cybervm net &lt;name&gt; offline|airgap|nat|bridged</code><span>or use start --net</span></div>
-      <table>
-        <tr><td>offline</td><td>default. No internet. Host Ollama + RAG reachable.</td></tr>
-        <tr><td>airgap</td><td>No network at all — no AI, no RAG, no transfer.</td></tr>
-        <tr><td>nat</td><td>Internet + AI plane. Needed for cloud agents, apt, mcp update.</td></tr>
-        <tr><td>bridged</td><td>VM sits on your real LAN. Breaks the sandbox; asks for yes.</td></tr>
+      <h2>5 · Cloud API keys <small>(VM running; nat to use them)</small></h2>
+      <div class="syn"><code>cybervm secrets push &lt;name&gt; [names…]</code></div>
+      <table class="o s">
+        <tr><td>[names…]</td><td><kbd>anthropic</kbd> <kbd>openai</kbd> <kbd>deepseek</kbd> <kbd>openrouter</kbd>. <em>None given = all four. Goes to VM memory (tmpfs) only.</em></td></tr>
+        <tr class="g"><td>source /run/user/1000/cybervm/secrets.env</td><td>Load the keys into this shell.</td></tr>
+        <tr><td>cybervm secrets wipe &lt;name&gt;</td><td>Shred them when done.</td></tr>
       </table>
     </section>
+  </div>
 
+  <div class="col">
     <section>
-      <h2>4 · File transfer <small>(VM running)</small></h2>
-      <div class="r"><code>cybervm transfer in &lt;vm&gt; &lt;file&gt; [guest/dir]</code><span>host → VM, default /mnt</span></div>
-      <div class="r"><code>cybervm transfer out &lt;vm&gt; &lt;guest/file&gt; [host/dest]</code><span>VM → host, default cwd</span></div>
-      <div class="r g"><code>echo hi | sudo tee /mnt/a.txt</code><span>/mnt is root-only: write with sudo</span></div>
+      <h2>6 · Snapshots and delete</h2>
+      <table class="o s">
+        <tr><td>cybervm snapshot &lt;name&gt; &lt;tag&gt;</td><td>Save a point to return to. Works while running. <em>Do it before a risky step.</em></td></tr>
+        <tr><td>cybervm restore &lt;name&gt; &lt;tag&gt;</td><td>VM off. Back to that point; everything after it is lost.</td></tr>
+        <tr><td>cybervm restore &lt;name&gt; clean</td><td><kbd>clean</kbd> is the snapshot <kbd>new</kbd> took — a fresh clone again.</td></tr>
+        <tr><td>cybervm destroy &lt;name&gt;</td><td>Deletes the clone and its disks after you type <kbd>yes</kbd>. Golden is untouched; Base/Golden are refused.</td></tr>
+      </table>
+    </section>
+    <section>
+      <h2>7 · Files in and out <small>(VM running, not airgap)</small></h2>
+      <div class="syn"><code>cybervm transfer in &lt;name&gt; &lt;file&gt; [guest/dir]</code></div>
+      <table class="o s">
+        <tr><td>[guest/dir]</td><td>Where it lands in the VM. <em>Default <kbd>/mnt</kbd>. File is written as root, world-readable.</em></td></tr>
+      </table>
+      <div class="syn" style="margin-top:.6mm"><code>cybervm transfer out &lt;name&gt; &lt;guest/file&gt; [host/dest]</code></div>
+      <table class="o s">
+        <tr><td>[host/dest]</td><td>Host folder or file name. <em>Default: the directory you are in. Overwrites a file of the same name.</em></td></tr>
+        <tr class="g"><td>echo hi | sudo tee /mnt/a.txt</td><td><kbd>/mnt</kbd> is root-only: write there with sudo.</td></tr>
+      </table>
     </section>
   </div>
 
-  <!-- ───────────── column 2 ───────────── -->
   <div class="col">
     <section>
-      <h2>5 · Cloud API keys <small>(VM running, net nat)</small></h2>
-      <div class="r"><code>cybervm secrets push &lt;vm&gt; [names…]</code><span>anthropic openai deepseek openrouter</span></div>
-      <div class="r g"><code>source /run/user/1000/cybervm/secrets.env</code><span>load keys</span></div>
-      <div class="r"><code>cybervm secrets wipe &lt;vm&gt;</code><span>shred them</span></div>
+      <h2>8 · Inside the VM — local AI <small>(works offline)</small></h2>
+      <table class="o s">
+        <tr class="g"><td>source /etc/profile.d/cybervm.sh</td><td>Sets <kbd>$OLLAMA_HOST</kbd>, <kbd>$CYBERVM_RAG_URL</kbd>.</td></tr>
+        <tr class="g"><td>cybervm ai run "&lt;prompt&gt;"</td><td>Answer from the host model.</td></tr>
+        <tr class="g"><td>cybervm ai run &lt;model:tag&gt; "…"</td><td>Other model, this call.</td></tr>
+        <tr class="g"><td>export CYBERVM_AI_MODEL=&lt;model:tag&gt;</td><td>New default model.</td></tr>
+        <tr class="g"><td>cybervm ai list</td><td>Models available on the host.</td></tr>
+        <tr class="g"><td>cybervm ai pull &lt;model&gt;</td><td>Download a model onto the host.</td></tr>
+        <tr class="g"><td>cybervm ai rm &lt;model&gt;</td><td>Delete a model from the host.</td></tr>
+        <tr class="g"><td>cybervm ai opencode [model:tag] "&lt;task&gt;"</td><td>Agent run on the local model.</td></tr>
+        <tr class="g"><td>cybervm opencode "&lt;task&gt;"</td><td>Shortcut for the row above.</td></tr>
+        <tr class="g"><td>opencode · claude · codex</td><td>Cloud models: nat + keys (5).</td></tr>
+      </table>
     </section>
-
     <section>
-      <h2>6 · Local AI on the host <small>(Ollama)</small></h2>
-      <div class="r"><code>cybervm ai list</code><span>models installed</span></div>
-      <div class="r"><code>cybervm ai pull [model]</code><span>no arg = all of config/ai/models.yml</span></div>
-      <div class="r"><code>cybervm ai rm &lt;model&gt;</code><span>delete a model</span></div>
-      <div class="r"><code>cybervm ai run "&lt;prompt&gt;"</code><span>default qwen2.5:3b-instruct</span></div>
-      <div class="r"><code>cybervm ai run &lt;model:tag&gt; "&lt;prompt&gt;"</code><span>pick the model</span></div>
-      <div class="r"><code>cybervm ai bench [model]</code><span>tokens/s → docs/benchmarks/</span></div>
-      <div class="r"><code>cybervm ai tune</code><span>cap Ollama so a VM stays responsive</span></div>
-      <div class="r"><code><i>  flags:</i> --cpu-quota 400 --nice 10 --keepalive 5m --context 2048 --governor --swappiness 10</code></div>
-      <div class="r"><code>cybervm ai untune</code><span>remove the cap, restore defaults</span></div>
-    </section>
-
-    <section>
-      <h2>7 · Inside the VM <small>(guest cybervm CLI — works offline)</small></h2>
-      <div class="r g"><code>source /etc/profile.d/cybervm.sh</code><span>exports the AI-plane vars</span></div>
-      <div class="r g"><code>cybervm ai run "&lt;prompt&gt;"</code><span>answer from host model</span></div>
-      <div class="r g"><code>cybervm ai run &lt;model:tag&gt; "&lt;prompt&gt;"</code><span>pick the model</span></div>
-      <div class="r g"><code>cybervm ai list</code><span>models on the host</span></div>
-      <div class="r g"><code>cybervm ai pull &lt;model&gt;</code><span>pull onto the host</span></div>
-      <div class="r g"><code>cybervm ai rm &lt;model&gt;</code><span>delete from the host</span></div>
-      <div class="r g"><code>cybervm ai opencode [model:tag] "&lt;task&gt;"</code><span>agent, local model</span></div>
-      <div class="r g"><code>cybervm opencode "&lt;task&gt;"</code><span>shortcut for the line above</span></div>
-      <div class="r g"><code>opencode · claude · codex</code><span>cloud models need nat + keys</span></div>
-      <div class="r g"><code>curl -s $OLLAMA_HOST/api/tags</code><span>is the AI plane reachable?</span></div>
-    </section>
-
-    <section>
-      <h2>8 · MCP + browser in the VM</h2>
-      <div class="r g"><code>cybervm mcp status</code><span>baked server + Chromium versions</span></div>
-      <div class="r g"><code>cybervm mcp verify</code><span>offline health check</span></div>
-      <div class="r g"><code>cybervm mcp update</code><span>refresh to latest — needs nat|bridged</span></div>
-    </section>
-
-    <section>
-      <h2>9 · Ask the RAG from the VM</h2>
-      <div class="r g"><code>curl -s $CYBERVM_RAG_URL/search -d '{"query":"sqli","tier_max":2}' | jq .</code></div>
-      <div class="r g"><code>cybervm ai opencode "Which CVEs joined CISA KEV recently?"</code></div>
-    </section>
-  </div>
-
-  <!-- ───────────── column 3 ───────────── -->
-  <div class="col">
-    <section>
-      <h2>10 · RAG knowledge base <small>(host docker service)</small></h2>
-      <div class="r"><code>cybervm rag up</code><span>start qdrant + rag-api</span></div>
-      <div class="r"><code>cybervm rag status</code><span>per-collection counts</span></div>
-      <div class="r"><code>cybervm rag down</code><span>stop (VMs unaffected)</span></div>
-      <div class="r"><code>cybervm rag update live</code><span>NVD, KEV, GHSA, EPSS, nuclei · daily</span></div>
-      <div class="r"><code>cybervm rag update stable</code><span>ATT&amp;CK, CWE, OWASP · weekly</span></div>
-      <div class="r"><code>cybervm rag update personal</code><span>rag/sources/personal/*.md</span></div>
-      <div class="r"><code>cybervm rag update</code><span>all three layers</span></div>
-      <div class="r"><code>cybervm rag update live --only &lt;source-id&gt;</code><span>re-ingest one source</span></div>
-      <div class="r"><code>cybervm rag backup</code><span>snapshot the vector DB</span></div>
-      <div class="r"><code>cybervm rag restore &lt;snapshot-path&gt;</code><span>e.g. rag/backups/&lt;snap&gt;</span></div>
-    </section>
-
-    <section>
-      <h2>11 · Golden image upkeep</h2>
-      <div class="r"><code>cybervm golden build</code><span>re-provision after editing config/</span></div>
-      <div class="r"><code>cybervm golden verify</code><span>confirm it is sound</span></div>
-      <div class="r"><code>cybervm golden reset</code><span>wipe golden, rebuild from base</span></div>
-      <div class="r"><code><i>  flags:</i> --dry-run</code><span>show the plan only</span></div>
-      <div class="r"><code><i>  flags:</i> --keep-ova</code><span>export an .ova first</span></div>
-      <div class="r"><code><i>  flags:</i> --no-verify</code><span>skip the tests</span></div>
-      <div class="r"><code>cybervm host ollama-pin</code><span>refresh pinned Ollama release</span></div>
-      <div class="r"><code>cybervm host-setup</code><span>safe to re-run; needed if the repo moves</span></div>
-    </section>
-
-    <section>
-      <h2>12 · Release, move, back up</h2>
-      <div class="r"><code>cybervm release</code><span>golden → .ova + sha256 + manifest</span></div>
-      <div class="r"><code>cybervm release list</code><span>exported releases</span></div>
-      <div class="r"><code>cybervm release rm &lt;name.ova&gt;</code><span>delete one</span></div>
-      <div class="r"><code>cybervm release prune [keep-n]</code><span>keep newest n (default 2)</span></div>
-      <div class="r"><code>cybervm import &lt;file.ova&gt;</code><span>register a release on this machine</span></div>
-      <div class="r"><code>cybervm backup &lt;dest&gt;</code><span>source + releases + RAG snapshot</span></div>
-    </section>
-
-    <section>
-      <h2>13 · When something breaks</h2>
-      <table>
-        <tr><td>clone broken</td><td><kbd>cybervm restore &lt;name&gt; clean</kbd>, or <kbd>destroy</kbd> then <kbd>new</kbd></td></tr>
-        <tr><td>golden broken</td><td><kbd>cybervm golden reset</kbd> (base is never touched)</td></tr>
-        <tr><td>AI not answering</td><td><kbd>cybervm doctor</kbd>, then <kbd>cybervm ai list</kbd> (re-applies the AI-plane address and restarts Ollama)</td></tr>
-        <tr><td>VM won't start</td><td>“Not enough host RAM” → stop another VM or <kbd>resize</kbd> smaller</td></tr>
-        <tr><td>new machine</td><td><kbd>host-setup</kbd> → <kbd>import &lt;ova&gt;</kbd> (or <kbd>base import</kbd> + <kbd>golden build</kbd>) → <kbd>rag up</kbd> → <kbd>rag update live</kbd></td></tr>
-        <tr><td>all commands</td><td><kbd>cybervm help</kbd> on the host · <kbd>cybervm help</kbd> in the VM</td></tr>
+      <h2>9 · Inside the VM — MCP browser and RAG</h2>
+      <table class="o s">
+        <tr class="g"><td>cybervm mcp status</td><td>MCP + Chromium versions.</td></tr>
+        <tr class="g"><td>cybervm mcp verify</td><td>Offline health check of the browser.</td></tr>
+        <tr class="g"><td>cybervm mcp update</td><td>Get latest. Needs nat|bridged.</td></tr>
+        <tr class="g"><td>curl -s $CYBERVM_RAG_URL/search -d '{"query":"sqli"}' | jq .</td><td>Ask the RAG. Filters: page 2, block 12.</td></tr>
       </table>
     </section>
   </div>
 </div>
 
-<footer>
-  <ul>
-    <li><b>Never work in Base or Golden.</b> Work only in clones; <kbd>destroy</kbd> refuses the other two.</li>
-    <li><kbd>net</kbd>, <kbd>resize</kbd> and <kbd>restore</kbd> need the VM powered off. <kbd>snapshot</kbd> does not.</li>
-    <li>A new clone is always <kbd>offline</kbd>. <kbd>start</kbd> without <kbd>--net</kbd> reuses the last mode you set.</li>
-    <li>Playwright MCP is headed-only: start the clone with a GUI (no <kbd>--headless</kbd>) to see the browser.</li>
-    <li>Add a tool by editing <kbd>config/</kbd> then <kbd>golden build</kbd> — never hand-edit a VM you want to keep.</li>
-    <li>API keys live in <kbd>~/.config/cybervm/secrets.env</kbd> on the host and never enter an image.</li>
-    <li>The AI-plane address is <kbd>CYBERVM_HOST_IP</kbd> in <kbd>.cybervm.env</kbd> (a VirtualBox host-only adapter, not your LAN IP).</li>
-    <li>After a host reboot the adapter is down until <kbd>start</kbd>, <kbd>ai</kbd> or <kbd>rag</kbd> brings it back; that is normal.</li>
-    <li>VM names: use the short name you gave <kbd>new</kbd> (<kbd>work-01</kbd>) in every command.</li>
-  </ul>
-</footer>
+<footer><ul>
+  <li><b>Never work in Base or Golden</b> — only in clones.</li>
+  <li><kbd>net</kbd>, <kbd>resize</kbd> and <kbd>restore</kbd> need the VM off; <kbd>transfer</kbd> and <kbd>secrets</kbd> need it running.</li>
+  <li>After a host reboot, <kbd>start</kbd>/<kbd>ai</kbd>/<kbd>rag</kbd> bring the AI plane and Ollama back by themselves.</li>
+</ul></footer>
+</div>
+
+<!-- ═══════════════════════════ PAGE 2 ═══════════════════════════ -->
+<div class="page">
+<header>
+  <h1>CyberVM-AI cheatsheet · 2/2 · Configs, AI, RAG, upkeep</h1>
+  <p>Config lives in git, not in VMs: edit a file, run the command, make a new clone.</p>
+  <div class="key"><span class="swatch">host command</span><span class="swatch" style="background:var(--tint);border-left:1.6pt solid #000">kali$ = inside the VM</span></div>
+</header>
+
+<div class="grid">
+
+  <section class="w2">
+    <h2>10 · Change a setting</h2>
+    <table class="m">
+      <tr><th>I want to…</th><th>Edit</th><th>Then run</th><th>Takes effect on</th></tr>
+      <tr><td>change VM sizes / default size</td><td><kbd>config/platform.yml</kbd> → <kbd>resource_profiles</kbd>, <kbd>default_profile</kbd></td><td>nothing</td><td>the next <kbd>new</kbd></td></tr>
+      <tr><td>clipboard / drag-and-drop</td><td><kbd>config/platform.yml</kbd> → <kbd>vm_defaults</kbd> (disabled | hosttoguest | guesttohost | bidirectional)</td><td><kbd>cybervm doctor</kbd> to see drift</td><td>new clones only</td></tr>
+      <tr><td>add / remove a Kali tool</td><td><kbd>config/tools/apt.yml</kbd> · <kbd>pip.yml</kbd> · <kbd>github.yml</kbd> · <kbd>binaries.yml</kbd></td><td><kbd>cybervm golden build</kbd></td><td>new clones</td></tr>
+      <tr><td>Burp extensions</td><td><kbd>config/burp/extensions.lock.yml</kbd></td><td><kbd>cybervm pins refresh</kbd> → <kbd>golden build</kbd></td><td>new clones</td></tr>
+      <tr><td>agent CLI / MCP versions</td><td><kbd>config/ai/clients.yml</kbd> · <kbd>config/mcp/servers.yml</kbd></td><td><kbd>cybervm golden build</kbd></td><td>new clones</td></tr>
+      <tr><td>which models get pulled</td><td><kbd>config/ai/models.yml</kbd></td><td><kbd>cybervm ai pull</kbd></td><td>at once, all VMs</td></tr>
+      <tr><td>default chat model</td><td><kbd>export CYBERVM_AI_MODEL=&lt;model:tag&gt;</kbd> (host or VM shell)</td><td>nothing</td><td>that shell</td></tr>
+      <tr><td>RAG sources</td><td><kbd>services/rag/sources.yml</kbd> · notes in <kbd>rag/sources/personal/*.md</kbd></td><td><kbd>cybervm rag update</kbd></td><td>at once, all VMs</td></tr>
+      <tr><td>RAM kept free for the host</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_HOST_RESERVE_MB</kbd></td><td>nothing</td><td>the next <kbd>start</kbd></td></tr>
+      <tr><td>AI-plane address or ports</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_HOST_IP</kbd>, <kbd>CYBERVM_NET_CIDR</kbd>, <kbd>CYBERVM_*_PORT</kbd></td><td><kbd>./cybervm host-setup</kbd> → <kbd>golden build</kbd></td><td>new clones</td></tr>
+      <tr><td>move data to another disk</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_ROOT</kbd></td><td><kbd>./cybervm host-setup</kbd> → <kbd>doctor</kbd></td><td>see runbook ssd-migration.md</td></tr>
+      <tr><td>API keys</td><td><kbd>~/.config/cybervm/secrets.env</kbd> (host only)</td><td><kbd>cybervm secrets push &lt;name&gt;</kbd></td><td>that running VM</td></tr>
+    </table>
+    <p class="note"><b>Rule of thumb:</b> anything under <kbd>config/</kbd> that ends up <i>inside</i> the VM needs <kbd>golden build</kbd> and a new clone. Existing clones keep what they were built with.</p>
+  </section>
+
+  <section>
+    <h2>11 · Host AI <small>(Ollama)</small></h2>
+    <table class="o">
+      <tr><td>cybervm ai list</td><td>Models installed.</td></tr>
+      <tr><td>cybervm ai pull [model]</td><td>One model, or all of <kbd>models.yml</kbd> with no argument.</td></tr>
+      <tr><td>cybervm ai rm &lt;model&gt;</td><td>Delete a model.</td></tr>
+      <tr><td>cybervm ai run [model:tag] "…"</td><td>Quick answer on the host.</td></tr>
+      <tr><td>cybervm ai bench [model]</td><td>Speed test → <kbd>docs/benchmarks/</kbd>.</td></tr>
+      <tr><td>cybervm ai tune [flags]</td><td>Cap Ollama so a running VM stays responsive.</td></tr>
+      <tr><td>&nbsp;--cpu-quota 500</td><td>Max CPU, % of one core. <em>500 ≈ 5 cores. Lower = VM smoother, AI slower.</em></td></tr>
+      <tr><td>&nbsp;--nice 10</td><td>Priority. <em>Higher = Ollama yields more to the VM.</em></td></tr>
+      <tr><td>&nbsp;--keepalive 2m</td><td>Unload an idle model after this long. <em>Frees ~2 GB RAM.</em></td></tr>
+      <tr><td>&nbsp;--context 4096</td><td>Context length. <em>Smaller = less RAM, faster; untuned is 8192.</em></td></tr>
+      <tr><td>&nbsp;--governor</td><td>CPU governor → performance. <em>Faster, more heat.</em></td></tr>
+      <tr><td>&nbsp;--swappiness 10</td><td>Lower swappiness. <em>Use if the host starts swapping.</em></td></tr>
+      <tr><td>cybervm ai untune</td><td>Remove the cap and restore everything.</td></tr>
+    </table>
+  </section>
+
+  <div class="col">
+    <section>
+      <h2>12 · RAG knowledge base <small>(host docker)</small></h2>
+      <table class="o">
+        <tr><td>cybervm rag up | down | status</td><td>Start, stop, show per-collection counts.</td></tr>
+        <tr><td>cybervm rag update live</td><td>Fast-moving intel. <em>Run daily. Needs internet.</em></td></tr>
+        <tr><td>cybervm rag update stable</td><td>Reference material. <em>Run weekly.</em></td></tr>
+        <tr><td>cybervm rag update personal</td><td>Your own notes.</td></tr>
+        <tr><td>cybervm rag update</td><td>All three layers.</td></tr>
+        <tr><td>&nbsp;--only &lt;source-id&gt;</td><td>Re-ingest one source, e.g. after a rate-limit failure.</td></tr>
+        <tr><td>cybervm rag backup</td><td>Copy the vector DB to <kbd>rag/backups/</kbd>.</td></tr>
+        <tr><td>cybervm rag restore &lt;path&gt;</td><td>Put a backup back.</td></tr>
+      </table>
+      <p class="note"><b>Source ids — live:</b> nvd_cve, cisa_kev, github_advisories, epss, nuclei_templates. <b>stable:</b> mitre_attack, cwe, owasp_wstg, owasp_cheatsheets, payloadsallthethings. <b>personal:</b> personal_notes.</p>
+      <p class="note"><b>Search filters</b> (JSON body of <kbd>/search</kbd>): <kbd>query</kbd> (required) · <kbd>tier_max</kbd> 1–4, 1 = authoritative only, default 4 · <kbd>since</kbd> "2026-09-01" · <kbd>cve</kbd> "CVE-…" · <kbd>kind</kbd> · <kbd>limit</kbd> default 8.</p>
+    </section>
+  </div>
+
+  <div class="col">
+    <section>
+      <h2>13 · Golden image</h2>
+      <table class="o">
+        <tr><td>cybervm golden build</td><td>Re-provision from <kbd>config/</kbd> and snapshot.</td></tr>
+        <tr><td>cybervm golden verify</td><td>Check-mode + smoke tests.</td></tr>
+        <tr><td>cybervm golden reset</td><td>Delete golden and its snapshot chain, rebuild from base. <em>Reclaims disk.</em></td></tr>
+        <tr><td>&nbsp;--dry-run</td><td>Show the plan, change nothing.</td></tr>
+        <tr><td>&nbsp;--keep-ova</td><td>Export an .ova first as a safety copy.</td></tr>
+        <tr><td>&nbsp;--no-verify</td><td>Skip the tests. <em>Result is untested.</em></td></tr>
+        <tr><td>cybervm pins check | refresh</td><td>Burp pins vs live store; re-pin if drifted.</td></tr>
+        <tr><td>cybervm host ollama-pin</td><td>Refresh the pinned Ollama release.</td></tr>
+        <tr><td>cybervm doctor</td><td>PASS/FAIL readiness table.</td></tr>
+      </table>
+    </section>
+    <section>
+      <h2>14 · Release, move, back up</h2>
+      <table class="o">
+        <tr><td>cybervm release</td><td>Golden → .ova + sha256 + manifest.</td></tr>
+        <tr><td>cybervm release list</td><td>Exported releases.</td></tr>
+        <tr><td>cybervm release rm &lt;name.ova&gt;</td><td>Delete one.</td></tr>
+        <tr><td>cybervm release prune [n]</td><td>Keep the newest n. <em>Default 2.</em></td></tr>
+        <tr><td>cybervm import &lt;file.ova&gt;</td><td>Register a release on this machine.</td></tr>
+        <tr><td>cybervm backup &lt;dest&gt;</td><td>Source + releases + RAG backups.</td></tr>
+      </table>
+    </section>
+  </div>
+
+  <div class="col">
+    <section>
+      <h2>15 · First-time setup <small>(once, in order)</small></h2>
+      <table class="o">
+        <tr><td>cp .cybervm.env.example .cybervm.env</td><td>Then set <kbd>CYBERVM_ROOT</kbd>.</td></tr>
+        <tr><td>./cybervm host-setup</td><td>Deps, network, Ollama, ufw, PATH.</td></tr>
+        <tr><td>cybervm doctor</td><td>Must be all PASS.</td></tr>
+        <tr><td>cybervm pins check</td><td><kbd>pins refresh</kbd> if it reports drift.</td></tr>
+        <tr><td>cybervm base import</td><td>Register the Kali image.</td></tr>
+        <tr><td>cybervm golden build</td><td>Provision + snapshot.</td></tr>
+        <tr><td>cybervm rag up</td><td>Then <kbd>rag update</kbd>.</td></tr>
+      </table>
+    </section>
+    <section>
+      <h2>16 · When something breaks</h2>
+      <table class="m">
+        <tr><td>clone broken</td><td><kbd>restore &lt;name&gt; clean</kbd>, or <kbd>destroy</kbd> + <kbd>new</kbd></td></tr>
+        <tr><td>golden broken</td><td><kbd>golden reset</kbd> — base is never touched</td></tr>
+        <tr><td>AI not answering</td><td><kbd>doctor</kbd>, then <kbd>ai list</kbd> (revives the AI plane + Ollama)</td></tr>
+        <tr><td>no internet in VM</td><td>mode is offline: <kbd>stop</kbd> → <kbd>start --net nat</kbd></td></tr>
+        <tr><td>transfer fails</td><td>VM not running, or mode is airgap</td></tr>
+        <tr><td>new machine</td><td><kbd>host-setup</kbd> → <kbd>import &lt;ova&gt;</kbd> → <kbd>rag up</kbd></td></tr>
+        <tr><td>all commands</td><td><kbd>cybervm help</kbd> (host and VM)</td></tr>
+      </table>
+    </section>
+  </div>
+</div>
+
+<footer><ul>
+  <li>Add a tool by editing <kbd>config/</kbd> then <kbd>golden build</kbd> — never hand-edit a VM you want to keep.</li>
+  <li>API keys stay on the host in <kbd>~/.config/cybervm/secrets.env</kbd> and never enter an image.</li>
+  <li><kbd>CYBERVM_HOST_IP</kbd> is a VirtualBox host-only adapter address, not your LAN IP.</li>
+</ul></footer>
+</div>
 
 </body>
 </html>
