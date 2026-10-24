@@ -1,4 +1,11 @@
 ---
+# A build cut off mid-upgrade leaves dpkg half-configured, and apt then refuses
+# every command until it is repaired. No-op on a healthy image.
+- name: Repair an interrupted dpkg run (if any)
+  shell:
+    cmd: export DEBIAN_FRONTEND=noninteractive; dpkg --force-confdef --force-confold --configure -a && apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -f install
+  when: not ansible_check_mode
+
 - name: Update apt cache (live output streams to console)
   shell:
     cmd: export DEBIAN_FRONTEND=noninteractive; apt-get update -o Acquire::Retries=3
@@ -21,6 +28,9 @@
   apt:
     name: [linux-headers-amd64, virtualbox-guest-utils, virtualbox-guest-x11]
     state: present
+
+- name: Allow the AI user to read VirtualBox auto-mounted shares (realtime skills share)
+  user: { name: "{{ vm_user }}", groups: vboxsf, append: true }
 
 - name: cybervm metadata dir
   file: { path: /etc/cybervm, state: directory, mode: "0755" }

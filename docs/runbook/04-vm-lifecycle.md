@@ -58,9 +58,11 @@ $ ./cybervm net work-01 offline            # default: no internet, AI+RAG reacha
 ```
 Modes: `offline` (default) · `airgap` (no net at all) · `nat` (internet) · `bridged` (asks for `yes`).
 
-## 4.3 File transfer (SCP over the AI plane — no shared folders)
+## 4.3 File transfer (SCP over the AI plane — no shared folder)
 `transfer` moves files host↔guest over SSH (no staging copy, no vboxsf, no `transfer/` pollution).
 The guest runs the shared SCP helper (`/usr/bin/scp` → openSSH); `/mnt` is a plain root-owned dir.
+(This is about *ad-hoc file transfer*. The persistent realtime **skills** share in §4.4 is a separate,
+deliberate read-only vboxsf mount and does not use this path.)
 
 ```
 # host -> guest (default landing dir /mnt; optional 3rd arg = guest/dir):
@@ -82,7 +84,34 @@ Notes:
 - Same-name overrides normal SCP semantics: `out` to your cwd overwrites a local file of that name.
 - Requires the VM to be running and Guest Additions to report its AI-plane IP.
 
-## 4.4 Cloud keys (only when you want them)
+## 4.4 AI skills share (realtime host→guest, read-only)
+Your host `AgenticSkills` folder is shared into every clone so Claude Code and opencode inside the
+guest use the exact same skills as the host — edit a skill on the host and the guest sees it
+immediately, no copying. It is a VirtualBox `vboxsf` shared folder, **read-only** by default (a VM
+that runs untrusted targets cannot modify your host skills).
+
+Mechanism:
+- Host folder: `CYBERVM_SKILLS_HOST` (`.cybervm.env`, default `$HOME/Personal/AgenticSkills`).
+- `golden build` bakes the guest symlinks `~/.claude/skills` and `~/.config/opencode/skills` →
+  `/media/sf_AgenticSkills`, and adds user `kali` to the `vboxsf` group.
+- `cybervm new` auto-attaches the share to each clone (recorded in its `clean` snapshot).
+
+```
+$ ./cybervm skills status                 # show the configured host folder / share name / RO flag
+$ ./cybervm skills status work-01         # show whether a clone's share is attached + correct
+$ ./cybervm skills attach work-01         # (re)attach to an existing clone (VM off), then restart
+```
+
+Inside the guest (after the clone boots with the share attached):
+```
+kali$ mount | grep vboxsf                 # AgenticSkills on /media/sf_AgenticSkills ...
+kali$ ls ~/.claude/skills                 # same skills as the host, live
+```
+To make the share read-write instead (not recommended for a target-facing VM), set
+`CYBERVM_SKILLS_READONLY="0"` in `.cybervm.env`, then `cybervm skills attach <name>` (VM off) and
+restart.
+
+## 4.5 Cloud keys (only when you want them)
 ```
 $ ./cybervm start work-01 --net nat
 $ ./cybervm secrets push work-01 anthropic     # key -> VM tmpfs only, never an image

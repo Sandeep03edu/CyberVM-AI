@@ -12,6 +12,25 @@
   loop: "{{ clients.npm | default([]) }}"
   loop_control: { label: "{{ item.name }}" }
 
+# npm 12+ skips package install scripts unless the package is allow-listed, so
+# `npm install -g` can leave a client on disk but unusable ("native binary not
+# installed"). Run each package's own postinstall when its CLI does not answer,
+# then insist that it does — a broken client must fail the build, not a clone.
+- name: Finish AI client installs (postinstall) and verify each CLI runs
+  shell:
+    cmd: |
+      # full path: this runs as root, whose sudo PATH does not include the npm bin dir
+      bin="$(npm prefix -g)/bin/{{ item.bin }}"
+      if "$bin" --version >/dev/null 2>&1; then echo already-ok; exit 0; fi
+      cd "$(npm root -g)/{{ item.name }}" && npm run --if-present postinstall
+      "$bin" --version || { echo "{{ item.bin }} ({{ item.name }}) still does not run after postinstall" >&2; exit 1; }
+    executable: /bin/bash
+  register: client_fix
+  changed_when: "'already-ok' not in client_fix.stdout"
+  loop: "{{ clients.npm | default([]) }}"
+  loop_control: { label: "{{ item.name }}" }
+  when: not ansible_check_mode
+
 - name: profile.d hook to source runtime secrets (pushed at run time, tmpfs)
   copy:
     dest: /etc/profile.d/cybervm.sh

@@ -20,9 +20,9 @@ jython:
 extensions:
   - name: "Turbo Intruder"
     type: "java"
-    serial: 68
-    url: "https://portswigger.net/bappstore/bapps/download/9abaa233088242e8be252cd4ff534988/68"
-    sha256: "0b845daa9ef71b6b6266da319bcd37a39e17de76bf2d8a4b2bd3274176ff08b6"
+    serial: 69
+    url: "https://portswigger.net/bappstore/bapps/download/9abaa233088242e8be252cd4ff534988/69"
+    sha256: "71cda5904d7f857e1cbc8ccde6bf4df18190f48f16629fdc9e6f1433a807fd4a"
     archive: true
     entry_point: "turbo-intruder.jar"
   - name: "Logger++"

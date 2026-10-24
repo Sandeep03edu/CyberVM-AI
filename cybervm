@@ -51,12 +51,16 @@ VM LIFECYCLE
                              Change RAM/vCPU on an existing clone (VM must be off). Sizing is a
                              .vbox property, so the golden image is never modified.
   start <name> [--net MODE] [--headless]
-  stop <name>                ACPI shutdown
+  stop <name> [--force]      Clean shutdown, verified. --force = hard power-off
   net <name> <MODE>          Set network mode (offline|airgap|nat|bridged); VM must be off
   snapshot <name> <tag>      Take a snapshot
   restore <name> <tag>       Restore a snapshot
   destroy <name>             Power off + delete a clone (never Base/Golden)
   list                       List CyberVM VMs and state
+  skills status [<name>]     Show the host skills-share config, or a clone's share state
+  skills attach <name>       (Re)attach the realtime skills share to an existing clone
+                             (VM off). New clones get it automatically; golden bakes the
+                             ~/.claude/skills + ~/.config/opencode/skills symlinks.
   clipboard/DnD              Declared in config/platform.yml (.vm_defaults) and applied
                              automatically on base import, golden build and every clone.
                              Read-only drift check: ./cybervm doctor
@@ -113,7 +117,7 @@ case "$cmd" in
                  backup)   source "$CYBERVM_HOME/lib/release.sh";   backup_run "$@" ;;
                esac
                ;;
-  stop|snapshot|restore|destroy|list)
+  stop|snapshot|restore|destroy|list|skills)
                source "$CYBERVM_HOME/lib/vm.sh";       vm_dispatch "$cmd" "$@" ;;
   help|-h|--help) usage ;;
   *) err "unknown command: $cmd"; usage; exit 2 ;;

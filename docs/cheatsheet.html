@@ -138,8 +138,9 @@
       <div class="syn"><code>cybervm start &lt;name&gt; [--net MODE] [--headless]</code></div>
       <table class="o">
         <tr><td>--net MODE</td><td><kbd>offline</kbd> | <kbd>airgap</kbd> | <kbd>nat</kbd> | <kbd>bridged</kbd> — see block 2.</td></tr>
-        <tr><td>--headless</td><td>No VM window. <em>Use for transfer/SSH-only work. Leave it out when you need the desktop, Burp or the Playwright browser.</em></td></tr>
-        <tr><td>cybervm stop &lt;name&gt;</td><td>Clean ACPI shutdown.</td></tr>
+        <tr><td>--headless</td><td>No VM window. <em>Leave it out when you need the desktop, Burp or the Playwright browser.</em></td></tr>
+        <tr><td>cybervm stop &lt;name&gt;</td><td>Clean shutdown, confirmed off.</td></tr>
+        <tr><td>&nbsp;--force</td><td>Hard power-off. <em>Only when a normal stop fails.</em></td></tr>
         <tr><td>cybervm list</td><td>Every VM with state, RAM and vCPU.</td></tr>
       </table>
       <p class="note"><b>“Not enough host RAM”:</b> start keeps <kbd>CYBERVM_HOST_RESERVE_MB</kbd> (6144) free for the host. Stop another VM or <kbd>resize</kbd> this one smaller.</p>
@@ -184,6 +185,16 @@
       <table class="o s">
         <tr><td>[host/dest]</td><td>Host folder or file name. <em>Default: the directory you are in. Overwrites a file of the same name.</em></td></tr>
         <tr class="g"><td>echo hi | sudo tee /mnt/a.txt</td><td><kbd>/mnt</kbd> is root-only: write there with sudo.</td></tr>
+      </table>
+    </section>
+    <section>
+      <h2>7b · Skills share <small>(realtime, read-only)</small></h2>
+      <div class="syn"><code>cybervm skills status [&lt;name&gt;] · cybervm skills attach &lt;name&gt;</code></div>
+      <table class="o s">
+        <tr><td>new clones</td><td>Share attached automatically by <kbd>cybervm new</kbd>.</td></tr>
+        <tr><td>skills attach &lt;name&gt;</td><td>(Re)attach to an existing clone (VM off), then restart.</td></tr>
+        <tr class="g"><td>mount | grep vboxsf</td><td>In guest: <kbd>AgenticSkills on /media/sf_AgenticSkills</kbd>.</td></tr>
+        <tr class="g"><td>ls ~/.claude/skills</td><td>Same skills as the host, live (also <kbd>~/.config/opencode/skills</kbd>).</td></tr>
       </table>
     </section>
   </div>
@@ -239,6 +250,7 @@
       <tr><th>I want to…</th><th>Edit</th><th>Then run</th><th>Takes effect on</th></tr>
       <tr><td>change VM sizes / default size</td><td><kbd>config/platform.yml</kbd> → <kbd>resource_profiles</kbd>, <kbd>default_profile</kbd></td><td>nothing</td><td>the next <kbd>new</kbd></td></tr>
       <tr><td>clipboard / drag-and-drop</td><td><kbd>config/platform.yml</kbd> → <kbd>vm_defaults</kbd> (disabled | hosttoguest | guesttohost | bidirectional)</td><td><kbd>cybervm doctor</kbd> to see drift</td><td>new clones only</td></tr>
+      <tr><td>share host skills into every VM (realtime)</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_SKILLS_HOST</kbd> (default <kbd>$HOME/Personal/AgenticSkills</kbd>); <kbd>CYBERVM_SKILLS_READONLY</kbd> 1=RO</td><td><kbd>golden build</kbd> (bakes symlinks) — existing clones: <kbd>cybervm skills attach &lt;name&gt;</kbd></td><td>new clones auto; existing via attach</td></tr>
       <tr><td>add / remove a Kali tool</td><td><kbd>config/tools/apt.yml</kbd> · <kbd>pip.yml</kbd> · <kbd>github.yml</kbd> · <kbd>binaries.yml</kbd></td><td><kbd>cybervm golden build</kbd></td><td>new clones</td></tr>
       <tr><td>Burp extensions</td><td><kbd>config/burp/extensions.lock.yml</kbd></td><td><kbd>cybervm pins refresh</kbd> → <kbd>golden build</kbd></td><td>new clones</td></tr>
       <tr><td>agent CLI / MCP versions</td><td><kbd>config/ai/clients.yml</kbd> · <kbd>config/mcp/servers.yml</kbd></td><td><kbd>cybervm golden build</kbd></td><td>new clones</td></tr>
@@ -338,6 +350,7 @@
         <tr><td>golden broken</td><td><kbd>golden reset</kbd> — base is never touched</td></tr>
         <tr><td>AI not answering</td><td><kbd>doctor</kbd>, then <kbd>ai list</kbd> (revives the AI plane + Ollama)</td></tr>
         <tr><td>no internet in VM</td><td>mode is offline: <kbd>stop</kbd> → <kbd>start --net nat</kbd></td></tr>
+        <tr><td>VM won't stop</td><td><kbd>stop &lt;name&gt; --force</kbd></td></tr>
         <tr><td>transfer fails</td><td>VM not running, or mode is airgap</td></tr>
         <tr><td>new machine</td><td><kbd>host-setup</kbd> → <kbd>import &lt;ova&gt;</kbd> → <kbd>rag up</kbd></td></tr>
         <tr><td>all commands</td><td><kbd>cybervm help</kbd> (host and VM)</td></tr>

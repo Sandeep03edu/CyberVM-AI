@@ -10,8 +10,41 @@ vm_dispatch() { local action="$1"; shift || true
     restore)  vm_restore "$@" ;;
     destroy)  vm_destroy "$@" ;;
     list)     vm_list "$@" ;;
+    skills)   vm_skills "$@" ;;
     *) die "unknown vm action: $action" ;;
   esac; }
+
+# vm_skills attach <name> | status [<name>] — manage the realtime host skills share
+# on an EXISTING clone (new clones get it automatically in vm_new). `attach` needs
+# the VM off; `status` is read-only.
+vm_skills() {
+  local sub="${1:-status}"; shift || true
+  case "$sub" in
+    attach)
+      local name="${1:?usage: cybervm skills attach <name>}"
+      local vm; vm="$(_clone_name "$name")"; vm_exists "$vm" || vm="$name"
+      vm_exists "$vm" || die "no such VM: $name"
+      _is_protected "$vm" && die "refusing to modify protected VM: $vm"
+      vm_apply_skills_share "$vm"
+      ok "skills share ensured on $vm — (re)start the VM so the guest auto-mounts it" ;;
+    status)
+      local name="${1:-}"
+      if [ -n "$name" ]; then
+        local vm; vm="$(_clone_name "$name")"; vm_exists "$vm" || vm="$name"
+        vm_exists "$vm" || die "no such VM: $name"
+        if vm_skills_share_drift "$vm" >/dev/null 2>&1; then
+          ok "$vm skills share OK: $(vm_skills_share_drift "$vm")"
+        else
+          warn "$vm skills share DRIFT: $(vm_skills_share_drift "$vm" || true)"
+        fi
+      else
+        printf 'Host skills folder: %s\nShare name: %s\nRead-only: %s\n' \
+          "${CYBERVM_SKILLS_HOST:-<unset>}" "${CYBERVM_SKILLS_SHARE_NAME:-AgenticSkills}" \
+          "${CYBERVM_SKILLS_READONLY:-1}"
+      fi ;;
+    *) die "unknown skills action: $sub (valid: attach <name> | status [<name>])" ;;
+  esac
+}
 
 _clone_name() { echo "$(platform .vm_names.clone_prefix)$1"; }
 _is_protected() { local n="$1"; [ "$n" = "$(platform .vm_names.base)" ] || [ "$n" = "$(platform .vm_names.golden)" ]; }
@@ -152,8 +185,10 @@ vm_new() {
   local golden snap vm
   golden="$(platform .vm_names.golden)"; vm="$(_clone_name "$name")"
   vm_exists "$vm" && die "$vm already exists."
-  snap="$(cat "$CYBERVM_HOME/.cybervm.golden-snap" 2>/dev/null)"
-  [ -z "$snap" ] && snap=$(VBoxManage snapshot "$golden" list --machinereadable 2>/dev/null | sed -n 's/^SnapshotUUID[^=]*="\([^"]*\)"/\1/p' | tail -1)
+  # `|| true`: under `set -e` a missing pointer file or an empty snapshot list
+  # would end the script here, before the message that says what to do about it.
+  snap="$(cat "$CYBERVM_HOME/.cybervm.golden-snap" 2>/dev/null || true)"
+  [ -z "$snap" ] && snap=$(VBoxManage snapshot "$golden" list --machinereadable 2>/dev/null | sed -n 's/^SnapshotUUID[^=]*="\([^"]*\)"/\1/p' | tail -1 || true)
   [ -z "$snap" ] && die "No golden snapshot — run: cybervm golden build"
 
   log "Linked-cloning $golden@$snap -> $vm ($_RES_RAM MB / $_RES_CPUS vCPU, $_RES_SRC)…"
@@ -164,6 +199,9 @@ vm_new() {
   # never inherit a stale posture if golden's config drifted after its snapshot
   # was taken. Apply before the 'clean' snapshot so it is recorded too.
   vm_apply_host_config "$vm"
+  # Realtime host skills share (read-only vboxsf) — same per-clone .vbox property
+  # story as clipboard/DnD, so attach it here before the 'clean' snapshot records it.
+  vm_apply_skills_share "$vm"
   source "$CYBERVM_HOME/lib/net.sh"; net_apply "$vm" offline
   VBoxManage snapshot "$vm" take clean --description "fresh clone"
   ok "Created $vm (${_RES_RAM}MB/${_RES_CPUS}vCPU from $_RES_SRC; net: offline). Start: cybervm start $name"
@@ -209,7 +247,21 @@ vm_start() {
 }
 net_apply_wrap() { source "$CYBERVM_HOME/lib/net.sh"; net_apply "$1" "$2"; }
 
-vm_stop()    { local vm; vm="$(_clone_name "${1:?vm}")"; vm_exists "$vm" || vm="$1"; VBoxManage controlvm "$vm" acpipowerbutton && ok "$vm shutting down."; }
+vm_stop() { # cybervm stop <name> [--force]
+  local name="${1:?usage: cybervm stop <name> [--force]}" force=0 vm
+  case "${2:-}" in "") ;; --force) force=1 ;; *) die "unknown option for 'cybervm stop': $2 (valid: --force)" ;; esac
+  vm="$(_clone_name "$name")"; vm_exists "$vm" || vm="$name"
+  vm_exists "$vm" || die "no such VM: $name"
+  vm_running "$vm" || { ok "$vm is already off."; return 0; }
+  if [ "$force" = 1 ]; then
+    VBoxManage controlvm "$vm" poweroff >/dev/null 2>&1 || true
+    _vm_wait_off "$vm" 10 || die "$vm is still running after a hard power-off."
+    ok "$vm powered off (forced)."; return 0
+  fi
+  log "Shutting down $vm…"
+  vm_shutdown "$vm" || die "$vm did not shut down. Pull the plug with: cybervm stop $name --force"
+  ok "$vm stopped."
+}
 vm_snapshot(){ local vm; vm="$(_clone_name "${1:?vm}")"; VBoxManage snapshot "$vm" take "${2:?tag}" && ok "snapshot $2 on $vm"; }
 vm_restore() { local vm; vm="$(_clone_name "${1:?vm}")"; require_off "$vm"; VBoxManage snapshot "$vm" restore "${2:?tag}" && ok "restored $2 on $vm"; }
 

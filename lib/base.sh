@@ -53,5 +53,5 @@ _base_bootstrap_ssh() { local vm="$1"
   $gc run --exe /bin/bash -- -c "mkdir -p ~/.ssh && echo '$pub' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
   $gc run --exe /bin/bash -- -c "echo '$p' | sudo -S bash -c 'echo \"$u ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/cybervm'"
   ok "SSH bootstrapped. Test: ssh -i $CYBERVM_SSH_KEY $u@$ip true"
-  VBoxManage controlvm "$vm" acpipowerbutton 2>/dev/null || true
+  vm_shutdown "$vm" || warn "$vm is still running — stop it with: cybervm stop $vm --force"
 }

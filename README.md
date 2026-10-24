@@ -20,6 +20,7 @@ From the design discussion in `AIPlan/` (the requirements source of truth), the 
 | Never rebuild VM #2 by hand | **Ansible** provisions a golden image from `config/` manifests |
 | Not be tied to one LLM | Model / runtime / client are separated; local Ollama **and** cloud providers |
 | Same RAG shared by every VM, updated once | One **host RAG service**; VMs query it over one endpoint |
+| Same AI skills in every VM, edited once on the host | Host `AgenticSkills` folder shared read-only into each clone (vboxsf); Claude Code + opencode symlinked to it — edits appear in the guest in realtime, no copying |
 | Fresh CVE + in-the-wild intel, few false positives | Tiered sources + **CISA KEV** + **EPSS** + freshness metadata |
 | Tools (incl. Burp + extensions) present without manual setup | Manifest-driven install; pinned, checksum-verified BApps |
 | Strong sandbox, but switchable internet + controlled file transfer | Two NICs + `cybervm net` modes + transient transfer |
@@ -38,6 +39,8 @@ Ubuntu host ── ./cybervm
       kali-<name>         (disposable LINKED clones)
         NIC1 internet plane: none | nat | bridged
         NIC2 AI plane: host-only $CYBERVM_NET_CIDR → reaches ONLY Ollama + RAG
+        skills share: host AgenticSkills → /media/sf_AgenticSkills (read-only, realtime)
+                      → ~/.claude/skills & ~/.config/opencode/skills (symlinked in golden)
 ```
 
 **The source of truth is `config/` + `factory/` + `services/` in git — not the VM images.**
@@ -71,9 +74,15 @@ cp .cybervm.env.example .cybervm.env     # edit CYBERVM_ROOT if you like
 ./cybervm pins refresh                   # only if pins check reports DRIFT
 ./cybervm base import                    # register the verified Kali image
 ./cybervm golden build                   # Ansible-provision + snapshot
-./cybervm new work-01                    # a disposable clone
+./cybervm new work-01                    # a disposable clone (auto-attaches the skills share)
 ./cybervm start work-01 --net offline
+./cybervm skills status work-01          # confirm the realtime skills share is attached
 ```
+
+> **Skills share:** set `CYBERVM_SKILLS_HOST` in `.cybervm.env` (default
+> `$HOME/Personal/AgenticSkills`). `golden build` bakes the `~/.claude/skills` and
+> `~/.config/opencode/skills` symlinks; `new` attaches the read-only vboxsf share to each clone;
+> existing pre-change clones get it with `cybervm skills attach <name>` (VM off, then restart).
 
 **Inside a Kali clone** (the golden image ships a guest `cybervm` CLI that talks to host Ollama
 over the AI plane — works offline):

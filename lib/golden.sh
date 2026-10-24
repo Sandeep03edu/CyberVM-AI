@@ -51,7 +51,8 @@ INV
 _ansible_extra() {
   ANSIBLE_EXTRA=(-e "host_ai_ip=$CYBERVM_HOST_IP" -e "ai_plane_cidr=$CYBERVM_NET_CIDR"
                  -e "ollama_port=$CYBERVM_OLLAMA_PORT" -e "rag_port=$CYBERVM_RAG_PORT"
-                 -e "vm_user=$CYBERVM_VM_USER")
+                 -e "vm_user=$CYBERVM_VM_USER"
+                 -e "skills_share_name=${CYBERVM_SKILLS_SHARE_NAME:-AgenticSkills}")
 }
 
 golden_build() {
@@ -62,7 +63,13 @@ golden_build() {
   fi
   base="$(platform .vm_names.base)"; golden="$(platform .vm_names.golden)"
   vm_exists "$base" || die "Base image missing — run: cybervm base import"
-  if vm_exists "$golden"; then warn "$golden exists; re-provisioning in place."; else
+  if vm_exists "$golden"; then warn "$golden exists; re-provisioning in place."
+    # A failed build leaves golden running; stop it rather than refusing to retry.
+    if vm_running "$golden"; then
+      log "$golden is still running from an earlier build — shutting it down…"
+      vm_shutdown "$golden" || die "$golden will not shut down. Force it with: cybervm stop $golden --force"
+    fi
+  else
     log "Full-cloning $base -> $golden …"
     VBoxManage clonevm "$base" --snapshot "$(platform .snapshots.base)" \
       --options link --name "$golden" --register 2>/dev/null \
@@ -90,8 +97,8 @@ golden_build() {
   ssh -i "$CYBERVM_SSH_KEY" -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=10 \
       -o ServerAliveInterval=5 -o ServerAliveCountMax=3 "${CYBERVM_VM_USER}@$ip" \
       "sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*" || true
-  VBoxManage controlvm "$golden" acpipowerbutton; sleep 8
-  for _ in $(seq 1 30); do vm_running "$golden" || break; sleep 2; done
+  # The snapshot below must be of a powered-off VM: clones are made from it.
+  vm_shutdown "$golden" 60 || die "$golden did not shut down after provisioning, so no snapshot was taken. Run: cybervm stop $golden --force   then: cybervm golden build"
 
   snap="$(platform .snapshots.golden)-$(date +%Y.%m.%d-%H%M%S)"
   snap_uuid="$(VBoxManage snapshot "$golden" take "$snap" --description "provisioned golden image" 2>&1 | sed -n 's/.*UUID: *\([0-9a-f-]\{36\}\).*/\1/p' | tail -1)"
@@ -127,7 +134,7 @@ golden_verify() {
     /usr/local/bin/cybervm ai run "reply with exactly guest-ok" | grep -q guest-ok && echo "guest cybervm ai run OK" || echo "guest cybervm ai run FAILED"
     curl -fsm3 http://'"$CYBERVM_HOST_IP"':'"$CYBERVM_OLLAMA_PORT"'/api/tags >/dev/null && echo "ollama reachable from guest" || echo "ollama unreachable"
   '
-  VBoxManage controlvm "$golden" acpipowerbutton 2>/dev/null || true
+  vm_shutdown "$golden" || warn "$golden is still running — stop it with: cybervm stop $golden --force"
   ok "Verify complete."
 }
 

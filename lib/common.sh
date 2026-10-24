@@ -84,6 +84,81 @@ vm_host_config_drift() {
   printf 'clipboard=%s(want %s) DnD=%s(want %s)' "$cur_cb" "$want_cb" "$cur_dd" "$want_dd"; return 1
 }
 
+# ── Realtime host skills share (vboxsf) ──────────────────────
+# Like clipboard/DnD above, a shared folder is a per-VM .vbox property copied into
+# a clone only at clone time, so EVERY authoring path (clone, and any re-attach)
+# must call vm_apply_skills_share. The host folder (CYBERVM_SKILLS_HOST, the
+# AgenticSkills repo) is mounted read-only by default at /media/sf_<name> in the
+# guest; golden bakes the two client symlinks that point there.
+# _vm_share_path <vm> <share-name> — the host path currently mapped to that share, or "".
+# --machinereadable emits SharedFolderNameMachineMappingN / SharedFolderPathMachineMappingN
+# pairs keyed by the same N; join them and print the path whose name matches.
+_vm_share_path() {
+  VBoxManage showvminfo "$1" --machinereadable 2>/dev/null \
+    | awk -F'"' -v n="$2" '
+        /^SharedFolderNameMachineMapping[0-9]+=/ { i=$0; sub(/=.*/,"",i); sub(/^SharedFolderNameMachineMapping/,"",i); names[i]=$2 }
+        /^SharedFolderPathMachineMapping[0-9]+=/ { i=$0; sub(/=.*/,"",i); sub(/^SharedFolderPathMachineMapping/,"",i); paths[i]=$2 }
+        END { for (k in names) if (names[k]==n) print paths[k] }'
+}
+
+# _vm_share_writable <vm> <share-name> — "true"/"false" from the .vbox, or "" if no such share.
+# The writable/autoMount flags are not in --machinereadable, so read the CfgFile XML.
+# IMPORTANT: this runs under `set -euo pipefail` (the cybervm CLI). A grep with no
+# match exits 1, and under pipefail that 1 propagates out of ANY pipeline it sits
+# in — including a `$(...)` assignment — killing the whole script right here on a
+# fresh VM that has no SharedFolder yet. A single awk pass never does that (awk
+# exits 0 whether or not a pattern matched), so use awk, not grep|grep|head|sed,
+# and keep the explicit `|| true` belt-and-suspenders like _vm_cfg above.
+_vm_share_writable() {
+  local cfg; cfg="$(VBoxManage showvminfo "$1" --machinereadable 2>/dev/null | sed -n 's/^CfgFile="\(.*\)"/\1/p' || true)"
+  [ -n "$cfg" ] && [ -f "$cfg" ] || { echo ""; return 0; }
+  awk -v n="$2" '
+    match($0, /<SharedFolder[^>]*>/) {
+      line = substr($0, RSTART, RLENGTH)
+      if (line ~ ("name=\"" n "\"") && match(line, /writable="[a-zA-Z]*"/)) {
+        w = substr(line, RSTART, RLENGTH); sub(/writable="/,"",w); sub(/"$/,"",w)
+        print w; exit
+      }
+    }
+  ' "$cfg" || true
+}
+
+# vm_apply_skills_share <vm> — idempotent: (re)attach the skills share if missing/wrong.
+# Never blocks VM creation: a missing config or host path only warns.
+vm_apply_skills_share() {
+  local vm="${1:?vm}" name hostpath cur; local ro=()
+  vm_exists "$vm" || { warn "vm_apply_skills_share: no such VM: $vm"; return 0; }
+  hostpath="${CYBERVM_SKILLS_HOST:-}"
+  name="${CYBERVM_SKILLS_SHARE_NAME:-AgenticSkills}"
+  if [ -z "$hostpath" ]; then
+    warn "CYBERVM_SKILLS_HOST unset — skipping skills share for $vm"; return 0
+  fi
+  if [ ! -d "$hostpath" ]; then
+    warn "skills host path not found ($hostpath) — skipping skills share for $vm"; return 0
+  fi
+  cur="$(_vm_share_path "$vm" "$name")"
+  local want_w cur_w; want_w="true"; [ "${CYBERVM_SKILLS_READONLY:-1}" = "1" ] && want_w="false"
+  cur_w="$(_vm_share_writable "$vm" "$name")"
+  [ "$cur" = "$hostpath" ] && [ "$cur_w" = "$want_w" ] && return 0   # already correct (path + RO)
+  require_off "$vm"
+  [ -n "$cur" ] && { VBoxManage sharedfolder remove "$vm" --name "$name" 2>/dev/null || true; }
+  [ "${CYBERVM_SKILLS_READONLY:-1}" = "1" ] && ro=(--readonly)
+  log "Attaching skills share to $vm ($name -> $hostpath, ro=${CYBERVM_SKILLS_READONLY:-1})…"
+  VBoxManage sharedfolder add "$vm" --name "$name" --hostpath "$hostpath" --automount "${ro[@]}"
+  ok "$vm skills share attached ($name -> /media/sf_$name)"
+}
+
+# vm_skills_share_drift <vm> — read-only. Returns 0 when the share matches config.
+vm_skills_share_drift() {
+  local vm="${1:?vm}" name hostpath cur
+  name="${CYBERVM_SKILLS_SHARE_NAME:-AgenticSkills}"; hostpath="${CYBERVM_SKILLS_HOST:-}"
+  cur="$(_vm_share_path "$vm" "$name")"
+  if [ -n "$cur" ] && [ "$cur" = "$hostpath" ]; then
+    printf '%s -> %s' "$name" "$cur"; return 0
+  fi
+  printf '%s -> %s (want %s)' "$name" "${cur:-<none>}" "${hostpath:-<unset>}"; return 1
+}
+
 vm_running(){ VBoxManage list runningvms | grep -q "\"$1\""; }
 vm_state()  { VBoxManage showvminfo "$1" --machinereadable 2>/dev/null | sed -n 's/^VMState="\(.*\)"/\1/p'; }
 
@@ -101,6 +176,23 @@ vm_wait_ip() { # vm_wait_ip <vm> <slot> [timeout_s]
 
 confirm() { # confirm "<prompt>" — returns 0 only on typed 'yes'
   local ans; read -r -p "$1 (type 'yes'): " ans; [ "$ans" = "yes" ]
+}
+
+# vm_shutdown <vm> [seconds-per-attempt] — clean shutdown that is actually verified.
+# The ACPI power button alone is not enough: a logged-in Kali desktop ignores it,
+# so the VM stays up while the caller believes it is off. Press the button, wait,
+# then ask the guest to power itself off (guest control works in every net mode).
+# Returns 1 if the VM is still running; callers decide whether that is fatal.
+_vm_wait_off() { local i; for i in $(seq 1 "$2"); do vm_running "$1" || return 0; sleep 1; done; return 1; }
+vm_shutdown() {
+  local vm="${1:?vm}" t="${2:-30}"
+  vm_running "$vm" || return 0
+  VBoxManage controlvm "$vm" acpipowerbutton >/dev/null 2>&1 || true
+  _vm_wait_off "$vm" "$t" && return 0
+  log "$vm ignored the power button — asking the guest to power off…"
+  VBoxManage guestcontrol "$vm" --username "$CYBERVM_VM_USER" --password "$CYBERVM_VM_PASS" \
+    run --exe /bin/bash -- -c "echo '$CYBERVM_VM_PASS' | sudo -S poweroff" >/dev/null 2>&1 || true
+  _vm_wait_off "$vm" "$t"
 }
 
 require_off() { vm_running "$1" && die "VM '$1' is running; stop it first (cybervm stop $1)"; return 0; }
@@ -124,7 +216,7 @@ require_host_setup() {
 ai_plane_if()   { cat "$CYBERVM_HOME/.cybervm.netif" 2>/dev/null; }
 ai_plane_live() { ip -4 -o addr show dev "$1" 2>/dev/null | grep -qF " ${CYBERVM_HOST_IP}/"; }
 ensure_ai_plane() {
-  local ifn; ifn="$(ai_plane_if)"; [ -n "$ifn" ] || return 0
+  local ifn; ifn="$(ai_plane_if || true)"; [ -n "$ifn" ] || return 0
   if ! ai_plane_live "$ifn"; then
     log "AI plane: bringing up $ifn (${CYBERVM_HOST_IP})…"
     VBoxManage hostonlyif ipconfig "$ifn" --ip "$CYBERVM_HOST_IP" --netmask 255.255.255.0 \

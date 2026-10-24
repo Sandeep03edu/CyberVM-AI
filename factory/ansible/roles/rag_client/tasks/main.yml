@@ -12,3 +12,21 @@
     - "/home/{{ vm_user }}/.config/opencode"
     - "/home/{{ vm_user }}/.config/cybervm"
     - "/home/{{ vm_user }}/.codex"
+    - "/home/{{ vm_user }}/.claude"
+
+# Both Claude Code and opencode discover skills from a per-user `skills` dir. Point
+# both at the realtime host skills share (vboxsf auto-mount at /media/sf_<name>),
+# mirroring the host symlinks. The share only mounts at guest runtime, so the link
+# target may not exist at build time — force: true creates it anyway (a dangling
+# link that resolves once the clone boots with the share attached).
+- name: Point Claude Code + opencode at the shared host skills folder (realtime)
+  become: false
+  file:
+    src: "/media/sf_{{ skills_share_name | default('AgenticSkills') }}"
+    dest: "{{ item }}"
+    state: link
+    force: true
+    follow: false
+  loop:
+    - "/home/{{ vm_user }}/.claude/skills"
+    - "/home/{{ vm_user }}/.config/opencode/skills"
