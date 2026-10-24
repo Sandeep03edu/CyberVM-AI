@@ -90,7 +90,14 @@ RAG (host docker service)
 TRANSFER / SECRETS
   transfer in|out <vm> <file>   Controlled host<->VM file copy
   secrets push <vm> [names..]   Copy named API keys into VM tmpfs
-  secrets wipe <vm>             Remove pushed secrets
+  secrets push <vm> claude-session
+                             Copy the HOST's live Claude Code login (subscription OAuth
+                             session, not an API key) into the VM, tmpfs-backed via a
+                             symlink at ~/.claude/.credentials.json — 'claude' in the
+                             guest is then already logged in, no browser flow needed.
+                             Asks you to type 'yes' (real personal-account credential).
+                             Does NOT survive a reboot; never baked into golden/.ova.
+  secrets wipe <vm>             Remove pushed secrets (incl. any pushed Claude session)
 
   backup <dest>              Back up source + releases + rag snapshot to <dest>
   help                       This message

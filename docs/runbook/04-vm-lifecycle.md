@@ -150,6 +150,35 @@ $ ./cybervm secrets push work-01 anthropic     # key -> VM tmpfs only, never an 
 $ ./cybervm secrets wipe work-01
 ```
 
+### Reusing your host Claude Code login (subscription, not an API key)
+If you're logged into Claude Code on the host with a Pro/Max subscription, `secrets push <vm>
+claude-session` avoids re-running the interactive OAuth login inside every fresh clone:
+
+```
+$ ./cybervm start work-01                      # any net mode; guestcontrol doesn't need network
+$ ./cybervm secrets push work-01 claude-session
+  [warn] This copies your real Claude subscription session (not a bounded API key)...
+  Push the live Claude session into work-01? (type 'yes'):
+# in guest: claude   — already logged in, no browser flow
+$ ./cybervm secrets wipe work-01               # when done, or before sharing/exporting this VM
+```
+
+This is **deliberately never automatic** — it's not wired into `cybervm start`, so a VM you spin up
+specifically to point at an untrusted target doesn't silently get your real login. Mechanism: the
+host's `~/.claude/.credentials.json` (the OAuth access/refresh token) is copied into the guest's
+tmpfs (`/run/user/1000/cybervm/claude-session/`, same as the API-key path above), and the guest's
+`~/.claude/.credentials.json` is made a **symlink** into that tmpfs file — Claude Code reads (and,
+on token refresh, rewrites) that exact path automatically, so no `source` step is needed, unlike the
+generic API-key push. Because the real bytes only ever live in tmpfs:
+- a **reboot** clears it — the symlink goes dangling and the VM reverts to "not logged in"; re-run
+  `secrets push ... claude-session` after every restart, same as the API-key workflow already
+  requires;
+- it is **never** captured by `golden build`, a snapshot, or a `.ova` export — the login can't
+  accidentally become part of any persisted image.
+
+If you ever push this to a VM and later need that VM to be fully clean before handing it off or
+exporting it, `secrets wipe` shreds the tmpfs file as part of its normal cleanup — no separate step.
+
 ## 4.7 Verify — the isolation matrix
 ```
 # disposability:

@@ -161,6 +161,7 @@
         <tr><td>[names…]</td><td><kbd>anthropic</kbd> <kbd>openai</kbd> <kbd>deepseek</kbd> <kbd>openrouter</kbd>. <em>None given = all four. Goes to VM memory (tmpfs) only.</em></td></tr>
         <tr class="g"><td>source /run/user/1000/cybervm/secrets.env</td><td>Load the keys into this shell.</td></tr>
         <tr><td>cybervm secrets wipe &lt;name&gt;</td><td>Shred them when done.</td></tr>
+        <tr class="g"><td>cybervm secrets push &lt;name&gt; claude-session</td><td>Reuse the <b>host's live Claude subscription login</b> (not an API key) — guest is already logged in, no browser flow. Asks you to type <kbd>yes</kbd>. Never automatic, never baked into golden/snapshots/.ova, cleared on reboot — re-push after every restart.</td></tr>
       </table>
     </section>
   </div>
@@ -260,8 +261,8 @@
       <tr><th>I want to…</th><th>Edit</th><th>Then run</th><th>Takes effect on</th></tr>
       <tr><td>change VM sizes / default size</td><td><kbd>config/platform.yml</kbd> → <kbd>resource_profiles</kbd>, <kbd>default_profile</kbd></td><td>nothing</td><td>the next <kbd>new</kbd></td></tr>
       <tr><td>clipboard / drag-and-drop</td><td><kbd>config/platform.yml</kbd> → <kbd>vm_defaults</kbd> (disabled | hosttoguest | guesttohost | bidirectional)</td><td><kbd>cybervm doctor</kbd> to see drift</td><td>new clones only</td></tr>
-      <tr><td>share host skills into every VM (realtime)</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_SKILLS_HOST</kbd> (default <kbd>$HOME/Personal/Agentic/AgenticSkills</kbd>); <kbd>CYBERVM_SKILLS_READONLY</kbd> 1=RO</td><td><kbd>golden build</kbd> (bakes symlinks) — existing clones: <kbd>cybervm skills attach &lt;name&gt;</kbd></td><td>new clones auto; existing via attach</td></tr>
-      <tr><td>share host plugins into every VM (realtime)</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_PLUGINS_HOST</kbd> (default <kbd>$HOME/Personal/Agentic/AgenticPlugins</kbd>); <kbd>CYBERVM_PLUGINS_READONLY</kbd> 1=RO</td><td><kbd>golden build</kbd> (registers bundled MCP servers) — existing clones: <kbd>cybervm plugins attach &lt;name&gt;</kbd></td><td>new clones auto; existing via attach</td></tr>
+      <tr><td>share host skills into every VM (realtime)</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_SKILLS_HOST</kbd> (default <kbd>$HOME/Personal/Agentic/AgenticSkills</kbd>); <kbd>CYBERVM_SKILLS_SHARE_NAME</kbd> (default <kbd>AgenticSkills</kbd>); <kbd>CYBERVM_SKILLS_READONLY</kbd> 1=RO</td><td><kbd>golden build</kbd> (bakes symlinks) — existing clones: <kbd>cybervm skills attach &lt;name&gt;</kbd></td><td>new clones auto; existing via attach</td></tr>
+      <tr><td>share host plugins into every VM (realtime)</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_PLUGINS_HOST</kbd> (default <kbd>$HOME/Personal/Agentic/AgenticPlugins</kbd>); <kbd>CYBERVM_PLUGINS_SHARE_NAME</kbd> (default <kbd>AgenticPlugins</kbd>); <kbd>CYBERVM_PLUGINS_READONLY</kbd> 1=RO</td><td><kbd>golden build</kbd> (registers bundled MCP servers) — existing clones: <kbd>cybervm plugins attach &lt;name&gt;</kbd></td><td>new clones auto; existing via attach</td></tr>
       <tr><td>add a plugin-bundled MCP server</td><td><kbd>config/mcp/servers.yml</kbd> → new entry with <kbd>bundled: true</kbd>, <kbd>command</kbd> pointing at <kbd>/media/sf_AgenticPlugins/...</kbd></td><td><kbd>golden build</kbd></td><td>new clones</td></tr>
       <tr><td>add / remove a Kali tool</td><td><kbd>config/tools/apt.yml</kbd> · <kbd>pip.yml</kbd> · <kbd>github.yml</kbd> · <kbd>binaries.yml</kbd></td><td><kbd>cybervm golden build</kbd></td><td>new clones</td></tr>
       <tr><td>Burp extensions</td><td><kbd>config/burp/extensions.lock.yml</kbd></td><td><kbd>cybervm pins refresh</kbd> → <kbd>golden build</kbd></td><td>new clones</td></tr>
@@ -273,6 +274,7 @@
       <tr><td>AI-plane address or ports</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_HOST_IP</kbd>, <kbd>CYBERVM_NET_CIDR</kbd>, <kbd>CYBERVM_*_PORT</kbd></td><td><kbd>./cybervm host-setup</kbd> → <kbd>golden build</kbd></td><td>new clones</td></tr>
       <tr><td>move data to another disk</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_ROOT</kbd></td><td><kbd>./cybervm host-setup</kbd> → <kbd>doctor</kbd></td><td>see runbook ssd-migration.md</td></tr>
       <tr><td>API keys</td><td><kbd>~/.config/cybervm/secrets.env</kbd> (host only)</td><td><kbd>cybervm secrets push &lt;name&gt;</kbd></td><td>that running VM</td></tr>
+      <tr><td>Claude Code login (subscription)</td><td>already logged in on the host via <kbd>claude login</kbd></td><td><kbd>cybervm secrets push &lt;name&gt; claude-session</kbd></td><td>that running VM, until reboot</td></tr>
     </table>
     <p class="note"><b>Rule of thumb:</b> anything under <kbd>config/</kbd> that ends up <i>inside</i> the VM needs <kbd>golden build</kbd> and a new clone. Existing clones keep what they were built with.</p>
   </section>
@@ -374,6 +376,7 @@
 <footer><ul>
   <li>Add a tool by editing <kbd>config/</kbd> then <kbd>golden build</kbd> — never hand-edit a VM you want to keep.</li>
   <li>API keys stay on the host in <kbd>~/.config/cybervm/secrets.env</kbd> and never enter an image.</li>
+  <li>A pushed Claude session is tmpfs-only — never baked into golden, a snapshot, or a <kbd>.ova</kbd>, and cleared by any reboot.</li>
   <li><kbd>CYBERVM_HOST_IP</kbd> is a VirtualBox host-only adapter address, not your LAN IP.</li>
 </ul></footer>
 </div>
