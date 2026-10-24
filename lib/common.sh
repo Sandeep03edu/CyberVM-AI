@@ -159,6 +159,46 @@ vm_skills_share_drift() {
   printf '%s -> %s (want %s)' "$name" "${cur:-<none>}" "${hostpath:-<unset>}"; return 1
 }
 
+# ── Realtime host PLUGINS share (vboxsf) — same story as skills above ───────
+# Twin of vm_apply_skills_share/vm_skills_share_drift, reading CYBERVM_PLUGINS_* instead.
+# Reuses the same generic _vm_share_path/_vm_share_writable helpers (parametrized by share
+# name already). Unlike skills, Claude Code plugins are never auto-discovered from a
+# directory, so this share exists only so a plugin's bundled MCP server scripts (wired
+# via config/mcp/servers.yml) can actually reach their command on disk at guest runtime.
+vm_apply_plugins_share() {
+  local vm="${1:?vm}" name hostpath cur; local ro=()
+  vm_exists "$vm" || { warn "vm_apply_plugins_share: no such VM: $vm"; return 0; }
+  hostpath="${CYBERVM_PLUGINS_HOST:-}"
+  name="${CYBERVM_PLUGINS_SHARE_NAME:-AgenticPlugins}"
+  if [ -z "$hostpath" ]; then
+    warn "CYBERVM_PLUGINS_HOST unset — skipping plugins share for $vm"; return 0
+  fi
+  if [ ! -d "$hostpath" ]; then
+    warn "plugins host path not found ($hostpath) — skipping plugins share for $vm"; return 0
+  fi
+  cur="$(_vm_share_path "$vm" "$name")"
+  local want_w cur_w; want_w="true"; [ "${CYBERVM_PLUGINS_READONLY:-1}" = "1" ] && want_w="false"
+  cur_w="$(_vm_share_writable "$vm" "$name")"
+  [ "$cur" = "$hostpath" ] && [ "$cur_w" = "$want_w" ] && return 0   # already correct (path + RO)
+  require_off "$vm"
+  [ -n "$cur" ] && { VBoxManage sharedfolder remove "$vm" --name "$name" 2>/dev/null || true; }
+  [ "${CYBERVM_PLUGINS_READONLY:-1}" = "1" ] && ro=(--readonly)
+  log "Attaching plugins share to $vm ($name -> $hostpath, ro=${CYBERVM_PLUGINS_READONLY:-1})…"
+  VBoxManage sharedfolder add "$vm" --name "$name" --hostpath "$hostpath" --automount "${ro[@]}"
+  ok "$vm plugins share attached ($name -> /media/sf_$name)"
+}
+
+# vm_plugins_share_drift <vm> — read-only. Returns 0 when the share matches config.
+vm_plugins_share_drift() {
+  local vm="${1:?vm}" name hostpath cur
+  name="${CYBERVM_PLUGINS_SHARE_NAME:-AgenticPlugins}"; hostpath="${CYBERVM_PLUGINS_HOST:-}"
+  cur="$(_vm_share_path "$vm" "$name")"
+  if [ -n "$cur" ] && [ "$cur" = "$hostpath" ]; then
+    printf '%s -> %s' "$name" "$cur"; return 0
+  fi
+  printf '%s -> %s (want %s)' "$name" "${cur:-<none>}" "${hostpath:-<unset>}"; return 1
+}
+
 vm_running(){ VBoxManage list runningvms | grep -q "\"$1\""; }
 vm_state()  { VBoxManage showvminfo "$1" --machinereadable 2>/dev/null | sed -n 's/^VMState="\(.*\)"/\1/p'; }
 

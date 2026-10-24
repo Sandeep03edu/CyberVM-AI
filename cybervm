@@ -61,6 +61,11 @@ VM LIFECYCLE
   skills attach <name>       (Re)attach the realtime skills share to an existing clone
                              (VM off). New clones get it automatically; golden bakes the
                              ~/.claude/skills + ~/.config/opencode/skills symlinks.
+  plugins status [<name>]    Show the host plugins-share config, or a clone's share state
+  plugins attach <name>      (Re)attach the realtime plugins share to an existing clone
+                             (VM off). New clones get it automatically. Used so a plugin's
+                             bundled MCP server scripts (e.g. rea-dast-plugin's playwright
+                             wrappers, wired via config/mcp/servers.yml) are reachable.
   clipboard/DnD              Declared in config/platform.yml (.vm_defaults) and applied
                              automatically on base import, golden build and every clone.
                              Read-only drift check: ./cybervm doctor
@@ -117,7 +122,7 @@ case "$cmd" in
                  backup)   source "$CYBERVM_HOME/lib/release.sh";   backup_run "$@" ;;
                esac
                ;;
-  stop|snapshot|restore|destroy|list|skills)
+  stop|snapshot|restore|destroy|list|skills|plugins)
                source "$CYBERVM_HOME/lib/vm.sh";       vm_dispatch "$cmd" "$@" ;;
   help|-h|--help) usage ;;
   *) err "unknown command: $cmd"; usage; exit 2 ;;

@@ -11,6 +11,7 @@ vm_dispatch() { local action="$1"; shift || true
     destroy)  vm_destroy "$@" ;;
     list)     vm_list "$@" ;;
     skills)   vm_skills "$@" ;;
+    plugins)  vm_plugins "$@" ;;
     *) die "unknown vm action: $action" ;;
   esac; }
 
@@ -43,6 +44,39 @@ vm_skills() {
           "${CYBERVM_SKILLS_READONLY:-1}"
       fi ;;
     *) die "unknown skills action: $sub (valid: attach <name> | status [<name>])" ;;
+  esac
+}
+
+# vm_plugins attach <name> | status [<name>] — twin of vm_skills, for the realtime host
+# plugins share (needed so a plugin's bundled MCP server scripts, e.g. rea-dast-plugin's
+# playwright-attacker/-victim wrapper wired via config/mcp/servers.yml, are reachable on
+# disk at guest runtime). New clones get it automatically in vm_new.
+vm_plugins() {
+  local sub="${1:-status}"; shift || true
+  case "$sub" in
+    attach)
+      local name="${1:?usage: cybervm plugins attach <name>}"
+      local vm; vm="$(_clone_name "$name")"; vm_exists "$vm" || vm="$name"
+      vm_exists "$vm" || die "no such VM: $name"
+      _is_protected "$vm" && die "refusing to modify protected VM: $vm"
+      vm_apply_plugins_share "$vm"
+      ok "plugins share ensured on $vm — (re)start the VM so the guest auto-mounts it" ;;
+    status)
+      local name="${1:-}"
+      if [ -n "$name" ]; then
+        local vm; vm="$(_clone_name "$name")"; vm_exists "$vm" || vm="$name"
+        vm_exists "$vm" || die "no such VM: $name"
+        if vm_plugins_share_drift "$vm" >/dev/null 2>&1; then
+          ok "$vm plugins share OK: $(vm_plugins_share_drift "$vm")"
+        else
+          warn "$vm plugins share DRIFT: $(vm_plugins_share_drift "$vm" || true)"
+        fi
+      else
+        printf 'Host plugins folder: %s\nShare name: %s\nRead-only: %s\n' \
+          "${CYBERVM_PLUGINS_HOST:-<unset>}" "${CYBERVM_PLUGINS_SHARE_NAME:-AgenticPlugins}" \
+          "${CYBERVM_PLUGINS_READONLY:-1}"
+      fi ;;
+    *) die "unknown plugins action: $sub (valid: attach <name> | status [<name>])" ;;
   esac
 }
 
@@ -199,9 +233,11 @@ vm_new() {
   # never inherit a stale posture if golden's config drifted after its snapshot
   # was taken. Apply before the 'clean' snapshot so it is recorded too.
   vm_apply_host_config "$vm"
-  # Realtime host skills share (read-only vboxsf) — same per-clone .vbox property
-  # story as clipboard/DnD, so attach it here before the 'clean' snapshot records it.
+  # Realtime host skills + plugins shares (read-only vboxsf) — same per-clone .vbox
+  # property story as clipboard/DnD, so attach them here before the 'clean' snapshot
+  # records them.
   vm_apply_skills_share "$vm"
+  vm_apply_plugins_share "$vm"
   source "$CYBERVM_HOME/lib/net.sh"; net_apply "$vm" offline
   VBoxManage snapshot "$vm" take clean --description "fresh clone"
   ok "Created $vm (${_RES_RAM}MB/${_RES_CPUS}vCPU from $_RES_SRC; net: offline). Start: cybervm start $name"

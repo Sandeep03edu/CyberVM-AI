@@ -197,6 +197,16 @@
         <tr class="g"><td>ls ~/.claude/skills</td><td>Same skills as the host, live (also <kbd>~/.config/opencode/skills</kbd>).</td></tr>
       </table>
     </section>
+    <section>
+      <h2>7c · Plugins share <small>(realtime, read-only — bundled MCP only, not auto-discovery)</small></h2>
+      <div class="syn"><code>cybervm plugins status [&lt;name&gt;] · cybervm plugins attach &lt;name&gt;</code></div>
+      <table class="o s">
+        <tr><td>new clones</td><td>Share attached automatically by <kbd>cybervm new</kbd>.</td></tr>
+        <tr><td>plugins attach &lt;name&gt;</td><td>(Re)attach to an existing clone (VM off), then restart.</td></tr>
+        <tr class="g"><td>mount | grep vboxsf</td><td>In guest: <kbd>AgenticPlugins on /media/sf_AgenticPlugins</kbd>.</td></tr>
+        <tr class="g"><td>claude mcp list</td><td>Shows bundled servers (e.g. <kbd>playwright-attacker</kbd>), wired via <kbd>config/mcp/servers.yml</kbd> (<kbd>bundled: true</kbd>) — same path for opencode's <kbd>opencode.json</kbd>.</td></tr>
+      </table>
+    </section>
   </div>
 
   <div class="col">
@@ -250,7 +260,9 @@
       <tr><th>I want to…</th><th>Edit</th><th>Then run</th><th>Takes effect on</th></tr>
       <tr><td>change VM sizes / default size</td><td><kbd>config/platform.yml</kbd> → <kbd>resource_profiles</kbd>, <kbd>default_profile</kbd></td><td>nothing</td><td>the next <kbd>new</kbd></td></tr>
       <tr><td>clipboard / drag-and-drop</td><td><kbd>config/platform.yml</kbd> → <kbd>vm_defaults</kbd> (disabled | hosttoguest | guesttohost | bidirectional)</td><td><kbd>cybervm doctor</kbd> to see drift</td><td>new clones only</td></tr>
-      <tr><td>share host skills into every VM (realtime)</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_SKILLS_HOST</kbd> (default <kbd>$HOME/Personal/AgenticSkills</kbd>); <kbd>CYBERVM_SKILLS_READONLY</kbd> 1=RO</td><td><kbd>golden build</kbd> (bakes symlinks) — existing clones: <kbd>cybervm skills attach &lt;name&gt;</kbd></td><td>new clones auto; existing via attach</td></tr>
+      <tr><td>share host skills into every VM (realtime)</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_SKILLS_HOST</kbd> (default <kbd>$HOME/Personal/Agentic/AgenticSkills</kbd>); <kbd>CYBERVM_SKILLS_READONLY</kbd> 1=RO</td><td><kbd>golden build</kbd> (bakes symlinks) — existing clones: <kbd>cybervm skills attach &lt;name&gt;</kbd></td><td>new clones auto; existing via attach</td></tr>
+      <tr><td>share host plugins into every VM (realtime)</td><td><kbd>.cybervm.env</kbd> → <kbd>CYBERVM_PLUGINS_HOST</kbd> (default <kbd>$HOME/Personal/Agentic/AgenticPlugins</kbd>); <kbd>CYBERVM_PLUGINS_READONLY</kbd> 1=RO</td><td><kbd>golden build</kbd> (registers bundled MCP servers) — existing clones: <kbd>cybervm plugins attach &lt;name&gt;</kbd></td><td>new clones auto; existing via attach</td></tr>
+      <tr><td>add a plugin-bundled MCP server</td><td><kbd>config/mcp/servers.yml</kbd> → new entry with <kbd>bundled: true</kbd>, <kbd>command</kbd> pointing at <kbd>/media/sf_AgenticPlugins/...</kbd></td><td><kbd>golden build</kbd></td><td>new clones</td></tr>
       <tr><td>add / remove a Kali tool</td><td><kbd>config/tools/apt.yml</kbd> · <kbd>pip.yml</kbd> · <kbd>github.yml</kbd> · <kbd>binaries.yml</kbd></td><td><kbd>cybervm golden build</kbd></td><td>new clones</td></tr>
       <tr><td>Burp extensions</td><td><kbd>config/burp/extensions.lock.yml</kbd></td><td><kbd>cybervm pins refresh</kbd> → <kbd>golden build</kbd></td><td>new clones</td></tr>
       <tr><td>agent CLI / MCP versions</td><td><kbd>config/ai/clients.yml</kbd> · <kbd>config/mcp/servers.yml</kbd></td><td><kbd>cybervm golden build</kbd></td><td>new clones</td></tr>

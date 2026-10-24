@@ -28,3 +28,25 @@ servers:
     install_browser: chromium
     install_no_shell: true           # headed-only: skip the separate headless-shell build
     headed: true                     # never --headless: the browser window is always visible
+
+  # ── rea-dast-plugin's bundled playwright-attacker/-victim (AgenticPlugins share) ──
+  # `bundled: true` = this command already exists on disk, owned by the plugin,
+  # reached via the AgenticPlugins vboxsf share (CYBERVM_PLUGINS_HOST in
+  # .cybervm.env). It is EXCLUDED from the install-plan/bake step and from the
+  # generic wrapper-file templating (see mcp-install.plan.j2 and
+  # roles/mcp_servers/tasks/main.yml) — Ansible only needs to REGISTER these two
+  # with `claude mcp add` and list them in opencode.json, both of which the
+  # existing mcp_local loops already do generically. The wrapper script itself
+  # launches a proxied, CDP-attachable Chrome on first use and execs `npx -y
+  # @playwright/mcp` (version pinned via REA_DAST_PLAYWRIGHT_MCP_VERSION inside
+  # the script, default "latest") — so first real use needs network.
+  - name: playwright-attacker
+    transport: stdio
+    bundled: true
+    command: "/media/sf_AgenticPlugins/rea-dast-plugin/scripts/launch_and_attach.sh"
+    args: ["attacker", "9222"]
+  - name: playwright-victim
+    transport: stdio
+    bundled: true
+    command: "/media/sf_AgenticPlugins/rea-dast-plugin/scripts/launch_and_attach.sh"
+    args: ["victim", "9223"]

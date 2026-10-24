@@ -21,6 +21,7 @@ From the design discussion in `AIPlan/` (the requirements source of truth), the 
 | Not be tied to one LLM | Model / runtime / client are separated; local Ollama **and** cloud providers |
 | Same RAG shared by every VM, updated once | One **host RAG service**; VMs query it over one endpoint |
 | Same AI skills in every VM, edited once on the host | Host `AgenticSkills` folder shared read-only into each clone (vboxsf); Claude Code + opencode symlinked to it — edits appear in the guest in realtime, no copying |
+| Plugin-bundled MCP servers (e.g. rea-dast-plugin's Playwright attacker/victim) with no manual setup | Host `AgenticPlugins` folder shared read-only into each clone too; the two bundled servers are registered via `config/mcp/servers.yml` (`bundled: true`) for both Claude Code and opencode |
 | Fresh CVE + in-the-wild intel, few false positives | Tiered sources + **CISA KEV** + **EPSS** + freshness metadata |
 | Tools (incl. Burp + extensions) present without manual setup | Manifest-driven install; pinned, checksum-verified BApps |
 | Strong sandbox, but switchable internet + controlled file transfer | Two NICs + `cybervm net` modes + transient transfer |
@@ -39,8 +40,10 @@ Ubuntu host ── ./cybervm
       kali-<name>         (disposable LINKED clones)
         NIC1 internet plane: none | nat | bridged
         NIC2 AI plane: host-only $CYBERVM_NET_CIDR → reaches ONLY Ollama + RAG
-        skills share: host AgenticSkills → /media/sf_AgenticSkills (read-only, realtime)
-                      → ~/.claude/skills & ~/.config/opencode/skills (symlinked in golden)
+        skills share:  host Agentic/AgenticSkills → /media/sf_AgenticSkills (read-only, realtime)
+                       → ~/.claude/skills & ~/.config/opencode/skills (symlinked in golden)
+        plugins share: host Agentic/AgenticPlugins → /media/sf_AgenticPlugins (read-only, realtime)
+                       → bundled MCP server scripts, registered via config/mcp/servers.yml
 ```
 
 **The source of truth is `config/` + `factory/` + `services/` in git — not the VM images.**
@@ -74,15 +77,23 @@ cp .cybervm.env.example .cybervm.env     # edit CYBERVM_ROOT if you like
 ./cybervm pins refresh                   # only if pins check reports DRIFT
 ./cybervm base import                    # register the verified Kali image
 ./cybervm golden build                   # Ansible-provision + snapshot
-./cybervm new work-01                    # a disposable clone (auto-attaches the skills share)
+./cybervm new work-01                    # a disposable clone (auto-attaches both shares)
 ./cybervm start work-01 --net offline
 ./cybervm skills status work-01          # confirm the realtime skills share is attached
+./cybervm plugins status work-01         # confirm the realtime plugins share is attached
 ```
 
 > **Skills share:** set `CYBERVM_SKILLS_HOST` in `.cybervm.env` (default
-> `$HOME/Personal/AgenticSkills`). `golden build` bakes the `~/.claude/skills` and
+> `$HOME/Personal/Agentic/AgenticSkills`). `golden build` bakes the `~/.claude/skills` and
 > `~/.config/opencode/skills` symlinks; `new` attaches the read-only vboxsf share to each clone;
 > existing pre-change clones get it with `cybervm skills attach <name>` (VM off, then restart).
+
+> **Plugins share:** set `CYBERVM_PLUGINS_HOST` in `.cybervm.env` (default
+> `$HOME/Personal/Agentic/AgenticPlugins`). Unlike skills, Claude Code plugins are never
+> auto-discovered from a directory — this share exists so a plugin's bundled MCP server script
+> (e.g. `rea-dast-plugin`'s `playwright-attacker`/`playwright-victim`, declared `bundled: true` in
+> `config/mcp/servers.yml`) is reachable on disk at guest runtime. `new` attaches it automatically;
+> existing pre-change clones get it with `cybervm plugins attach <name>`.
 
 **Inside a Kali clone** (the golden image ships a guest `cybervm` CLI that talks to host Ollama
 over the AI plane — works offline):

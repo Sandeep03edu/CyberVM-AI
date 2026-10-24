@@ -91,7 +91,8 @@ immediately, no copying. It is a VirtualBox `vboxsf` shared folder, **read-only*
 that runs untrusted targets cannot modify your host skills).
 
 Mechanism:
-- Host folder: `CYBERVM_SKILLS_HOST` (`.cybervm.env`, default `$HOME/Personal/AgenticSkills`).
+- Host folder: `CYBERVM_SKILLS_HOST` (`.cybervm.env`, default
+  `$HOME/Personal/Agentic/AgenticSkills`).
 - `golden build` bakes the guest symlinks `~/.claude/skills` and `~/.config/opencode/skills` →
   `/media/sf_AgenticSkills`, and adds user `kali` to the `vboxsf` group.
 - `cybervm new` auto-attaches the share to each clone (recorded in its `clean` snapshot).
@@ -111,7 +112,37 @@ To make the share read-write instead (not recommended for a target-facing VM), s
 `CYBERVM_SKILLS_READONLY="0"` in `.cybervm.env`, then `cybervm skills attach <name>` (VM off) and
 restart.
 
-## 4.5 Cloud keys (only when you want them)
+## 4.5 Plugin-bundled MCP servers share (realtime host→guest, read-only)
+Claude Code plugins are **not** auto-discovered from a shared folder the way skills are — a plugin
+needs a registered local marketplace (`claude plugin marketplace add` + `claude plugin install`).
+This share exists for a narrower, specific reason: a plugin's bundled MCP server can declare a
+`command` that is a script living in the plugin's own folder (e.g. `rea-dast-plugin`'s
+`playwright-attacker`/`playwright-victim`, which self-launch a proxied, CDP-attachable Chrome and
+then attach `@playwright/mcp` to it). For that script to be *reachable* inside the guest at all,
+the plugin's folder needs to be mounted — this share is how.
+
+Mechanism:
+- Host folder: `CYBERVM_PLUGINS_HOST` (`.cybervm.env`, default
+  `$HOME/Personal/Agentic/AgenticPlugins`).
+- `config/mcp/servers.yml` lists each bundled server with `bundled: true` and a `command` pointing
+  at `/media/sf_AgenticPlugins/<plugin>/...`. That flag excludes the entry from the normal
+  npm-package-bake and wrapper-file-templating steps (the script already exists, owned by the
+  plugin) but still runs it through the existing `claude mcp add --scope user` loop and the
+  `opencode.json` rendering — so both clients register it the same way they would any other local
+  MCP server, with no plugin-specific Ansible code needed.
+- `cybervm new` auto-attaches the share to each clone (recorded in its `clean` snapshot), same as
+  the skills share.
+
+```
+$ ./cybervm plugins status                 # show the configured host folder / share name / RO flag
+$ ./cybervm plugins status work-01         # show whether a clone's share is attached + correct
+$ ./cybervm plugins attach work-01         # (re)attach to an existing clone (VM off), then restart
+```
+
+Inside the guest: `mount | grep vboxsf` should show both `AgenticSkills` and `AgenticPlugins`;
+`claude mcp list` / the rendered `~/.config/opencode/opencode.json` should list the bundled servers.
+
+## 4.6 Cloud keys (only when you want them)
 ```
 $ ./cybervm start work-01 --net nat
 $ ./cybervm secrets push work-01 anthropic     # key -> VM tmpfs only, never an image
@@ -119,7 +150,7 @@ $ ./cybervm secrets push work-01 anthropic     # key -> VM tmpfs only, never an 
 $ ./cybervm secrets wipe work-01
 ```
 
-## 4.5 Verify — the isolation matrix
+## 4.7 Verify — the isolation matrix
 ```
 # disposability:
 $ ./cybervm start work-01 --net offline

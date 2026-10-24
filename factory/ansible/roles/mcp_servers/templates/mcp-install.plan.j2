@@ -6,6 +6,14 @@
 #
 # Kept separate from the script so /usr/local/bin/cybervm-mcp-install is static
 # shell that works identically during `golden build` and inside a clone.
+#
+# `bundled: true` servers (e.g. a plugin's own wrapper script, reached via a
+# shared folder) are EXCLUDED here on purpose: their `command` is not something
+# this role should npm-install a package for or bake a browser against — it
+# already exists on disk, owned by the plugin, and does its own `npx` call at
+# runtime. Baking is skipped for them; first real use needs network.
 {% for s in mcp_local %}
+{% if not (s.bundled | default(false)) %}
 {{ s.name }}|{{ s.package }}|{{ s.bin }}|{{ s.command }}|{{ s.version }}|{{ s.browsers_path }}|{{ s.install_browser }}|{{ 'true' if s.install_no_shell | default(false) else 'false' }}
+{% endif %}
 {% endfor %}

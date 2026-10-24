@@ -69,6 +69,11 @@
   # `./cybervm golden build --force`. Inside a live clone use `cybervm mcp update`.
 
 - name: Install MCP launcher wrappers
+  # `bundled: true` servers (a plugin's own wrapper script, reached via a shared
+  # folder) are skipped here on purpose: templating this generic wrapper over
+  # `s.command` would overwrite the plugin's real script with boilerplate — and
+  # the destination is typically a read-only vboxsf mount anyway, so the write
+  # would fail loudly rather than silently, but either way it must not run.
   template:
     src: mcp-wrapper.sh.j2
     dest: "{{ s.command }}"
@@ -77,6 +82,7 @@
     mode: "0755"
   loop: "{{ mcp_local }}"
   loop_control: { loop_var: s, label: "{{ s.name }}" }
+  when: not (s.bundled | default(false))
 
 # ---------------------------------------------------------------- client wiring
 # NOTE: the cybervm-rag entries in these two templates were carried over verbatim
