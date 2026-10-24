@@ -164,20 +164,31 @@ $ ./cybervm secrets wipe work-01               # when done, or before sharing/ex
 ```
 
 This is **deliberately never automatic** — it's not wired into `cybervm start`, so a VM you spin up
-specifically to point at an untrusted target doesn't silently get your real login. Mechanism: the
-host's `~/.claude/.credentials.json` (the OAuth access/refresh token) is copied into the guest's
-tmpfs (`/run/user/1000/cybervm/claude-session/`, same as the API-key path above), and the guest's
+specifically to point at an untrusted target doesn't silently get your real login. Transport is
+plain **SSH/SCP** over the AI-plane IP (the same mechanism `cybervm transfer` already uses) — the
+host's `~/.claude/.credentials.json` (the OAuth access/refresh token) is `scp`'d **directly** into
+the guest's tmpfs (`/run/user/1000/cybervm/claude-session/`, same destination as the API-key path
+above) with no intermediate hop through `/tmp` (which is disk-backed on Kali, not tmpfs — landing a
+secret there even briefly, then moving it, would touch persistent disk). The guest's
 `~/.claude/.credentials.json` is made a **symlink** into that tmpfs file — Claude Code reads (and,
 on token refresh, rewrites) that exact path automatically, so no `source` step is needed, unlike the
-generic API-key push. Because the real bytes only ever live in tmpfs:
-- a **reboot** clears it — the symlink goes dangling and the VM reverts to "not logged in"; re-run
-  `secrets push ... claude-session` after every restart, same as the API-key workflow already
-  requires;
-- it is **never** captured by `golden build`, a snapshot, or a `.ova` export — the login can't
-  accidentally become part of any persisted image.
+generic API-key push. Because the real bytes only ever live in tmpfs, never on persistent disk:
+- a **reboot or poweroff** clears it automatically (`/run` is tmpfs — kernel-enforced, not an
+  application step that could be skipped) — the symlink goes dangling and the VM reverts to "not
+  logged in"; re-run `secrets push ... claude-session` after every restart, same as the API-key
+  workflow already requires;
+- it is **never** captured by `golden build` or a `.ova` export, and never captured by an
+  **offline** snapshot (VM powered off) — the login can't accidentally become part of a persisted
+  image this way.
 
-If you ever push this to a VM and later need that VM to be fully clean before handing it off or
-exporting it, `secrets wipe` shreds the tmpfs file as part of its normal cleanup — no separate step.
+**One caveat worth knowing**: an **online** snapshot (`cybervm snapshot <name> <tag>` taken while
+the VM is *running*) captures full RAM state, which includes tmpfs — so it **would** capture a
+currently-pushed session. Run `cybervm secrets wipe <vm>` before taking an online snapshot of a VM
+with a live push, same as you'd do before sharing/exporting it.
+
+If you ever push this to a VM and later need that VM to be fully clean before handing it off,
+snapshotting it live, or exporting it, `secrets wipe` shreds the tmpfs file as part of its normal
+cleanup — no separate step.
 
 ## 4.7 Verify — the isolation matrix
 ```

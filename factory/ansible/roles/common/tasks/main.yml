@@ -24,6 +24,20 @@
 - name: Node.js (for AI client CLIs)
   apt: { name: [nodejs, npm], state: present }
 
+# REVERTED (see CHANGELOG/commit history): an attempt to install Guest Additions from the
+# host's own /usr/share/virtualbox/VBoxGuestAdditions.iso (to fix a version mismatch that
+# breaks `VBoxManage guestcontrol <vm> run --exe /bin/bash` — "cannot execute binary file")
+# was tested against a real clone and caused a WORSE regression: the clone's network never
+# came up at all (no DHCP lease, confirmed absent from the VBox host-only DHCP lease file)
+# and VBoxService itself never became ready (`guestcontrol` reported "guest execution
+# service is not ready (yet)" even minutes after the VM reached its graphical login
+# screen; VBox.log showed the guest reporting a stale/unexpected Guest Additions version
+# 6.0.0, not the 7.2.16 that was actually installed). Reverted to the known-working
+# apt-based install rather than risk leaving golden unusable. The original GA-version-vs-
+# host mismatch (which only breaks `guestcontrol`-based commands specifically, not general
+# VM use) is tracked separately — do not re-attempt the ISO-install approach without first
+# capturing /var/log/vboxadd-install.log from inside a test guest to see why VBoxService
+# didn't start, and without a known-good rollback snapshot taken before `golden build` runs.
 - name: VirtualBox Guest Additions (vboxsf shared folders, guest agent, X11 driver)
   apt:
     name: [linux-headers-amd64, virtualbox-guest-utils, virtualbox-guest-x11]

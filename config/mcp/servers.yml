@@ -40,13 +40,27 @@ servers:
   # launches a proxied, CDP-attachable Chrome on first use and execs `npx -y
   # @playwright/mcp` (version pinned via REA_DAST_PLAYWRIGHT_MCP_VERSION inside
   # the script, default "latest") — so first real use needs network.
+  #
+  # `default_enabled: false` — a stdio MCP server is spawned eagerly at client
+  # startup (it has to run to report its tool list), so having these registered
+  # unconditionally meant a plain `claude`/`opencode` launched TWO Chrome windows
+  # every single time, for any session, not just DAST work. Claude Code has no
+  # enable/disable toggle for a registered user-scope server (`claude mcp --help`
+  # only has add/remove/get/list — no enable/disable), so the only way to make
+  # this off-by-default is to not `claude mcp add` it at golden-build time at
+  # all (see the `when:` guard in mcp_servers/tasks/main.yml) and not render it
+  # `enabled: true` in opencode.json (see opencode.json.j2). Turn it on/off per
+  # clone, for the session you actually want it, with the guest-side
+  # `cybervm mcp dast-roster on|off|status` command.
   - name: playwright-attacker
     transport: stdio
     bundled: true
+    default_enabled: false
     command: "/media/sf_AgenticPlugins/rea-dast-plugin/scripts/launch_and_attach.sh"
     args: ["attacker", "9222"]
   - name: playwright-victim
     transport: stdio
     bundled: true
+    default_enabled: false
     command: "/media/sf_AgenticPlugins/rea-dast-plugin/scripts/launch_and_attach.sh"
     args: ["victim", "9223"]

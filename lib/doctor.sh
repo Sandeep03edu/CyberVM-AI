@@ -89,6 +89,42 @@ doctor() {
     _row "VM clipboard/DnD" 1 ".vm_defaults missing in config/platform.yml"
   fi
 
+  # Guest Additions version vs this host's VirtualBox. A mismatch silently breaks
+  # `VBoxManage guestcontrol <vm> run --exe /bin/bash` ("cannot execute binary file" —
+  # confirmed: /bin/echo via guestcontrol works, /bin/bash does not, and /bin/bash itself
+  # is a perfectly valid binary over plain SSH). `cybervm secrets push/wipe` no longer
+  # depends on guestcontrol (moved to plain SSH/SCP, same transport as `cybervm transfer`),
+  # so this mismatch no longer affects it — the remaining blast radius is narrower:
+  # `vm_shutdown`'s ACPI-ignored fallback and `_base_bootstrap_ssh`'s one-time base-image
+  # setup (lib/common.sh, lib/base.sh), both of which still use guestcontrol. KNOWN, NOT
+  # YET FIXED at the Guest Additions level itself: Guest Additions come from Kali's own apt
+  # package, whose version drifts independently of whatever VirtualBox release the host
+  # runs. An attempt to instead install from the host's own
+  # /usr/share/virtualbox/VBoxGuestAdditions.iso was tried and reverted — it broke guest
+  # networking/VBoxService entirely on a test clone, which is worse than this mismatch. This
+  # check only reports the condition so it's visible, it does not claim `golden build` fixes
+  # it. Scoped to CyberVM-Kali-* (Base/Golden) like the clipboard/DnD check above, not
+  # arbitrary-named clones, and not this host's unrelated other registered VMs.
+  if have VBoxManage; then
+    local hostver gaok=1 gaany=0 gabad="" nvm2 gav
+    hostver="$(VBoxManage --version 2>/dev/null | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+    while read -r nvm2; do
+      [ -n "$nvm2" ] || continue
+      case "$nvm2" in CyberVM-Kali-*) ;; *) continue ;; esac
+      gav="$(VBoxManage guestproperty get "$nvm2" "/VirtualBox/GuestAdd/Version" 2>/dev/null | sed -n 's/^Value: //p')"
+      [ -z "$gav" ] && continue   # e.g. Base: no Guest Additions installed at all yet
+      gaany=1
+      if [ "$gav" != "$hostver" ]; then gaok=0; gabad="$gabad $nvm2($gav)"; fi
+    done <<<"$(VBoxManage list vms 2>/dev/null | sed -n 's/^"\([^"]*\)".*/\1/p')"
+    if [ "$gaany" -eq 0 ]; then
+      _row "Guest Additions vs host" 0 "nothing to compare yet (run golden build)"
+    elif [ "$gaok" -eq 1 ]; then
+      _row "Guest Additions vs host" 0 "matches host ($hostver)"
+    else
+      _row "Guest Additions vs host" 1 "host=$hostver, mismatched:$gabad -> affects vm_shutdown fallback + base SSH bootstrap only (secrets push/wipe use SSH, unaffected); known issue, no fix shipped yet"
+    fi
+  fi
+
   echo; log "Result: ${GRN}${pass} PASS${RST}, ${RED}${fail} FAIL${RST}"
   [ "$fail" -eq 0 ]; local rc=$?
   [[ $had_e == 1 ]] && set -e

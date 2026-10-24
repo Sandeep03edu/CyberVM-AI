@@ -26,7 +26,7 @@
     "{{ s.name }}": {
       "type": "local",
       "command": {{ ([s.command] + (s.args | default([]))) | to_json }},
-      "enabled": true,
+      "enabled": {{ 'true' if (s.default_enabled | default(true)) else 'false' }},
       "timeout": 60000
     }{% endfor %}
   }

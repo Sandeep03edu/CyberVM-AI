@@ -11,6 +11,7 @@
 #   cybervm mcp status
 #   cybervm mcp verify
 #   cybervm mcp update
+#   cybervm mcp dast-roster on|off|status
 # Host-only operations (golden build, bench, tune, RAG, transfer) stay on the host as ./cybervm.
 set -euo pipefail
 
@@ -39,6 +40,11 @@ cybervm (guest) - talk to the host LLM from inside a Kali clone.
   cybervm mcp update                         Refresh MCP servers to the latest release
                                             (needs net mode nat|bridged; the baked
                                              version keeps working with no network)
+  cybervm mcp dast-roster on|off|status      Toggle playwright-attacker/playwright-victim
+                                            (rea-dast-plugin) for claude + opencode together.
+                                            OFF by default - a stdio MCP server launches its
+                                            browser on every client startup once registered,
+                                            so this stays opt-in per clone, per session.
   cybervm help                               This message
 
 Default model: ${DEFAULT_MODEL} (override with CYBERVM_AI_MODEL).
@@ -153,12 +159,75 @@ mcp_status() { _mcp_tool; exec "$(_mcp_installer)" status; }
 mcp_verify() { _mcp_tool; exec "$(_mcp_installer)" verify; }
 mcp_update() { _mcp_tool; _need_internet; exec sudo "$(_mcp_installer)" update; }
 
+# ── DAST roster (playwright-attacker/playwright-victim, rea-dast-plugin) ─────
+# These two ship OFF by default (golden never `claude mcp add`s them and
+# opencode.json renders them `enabled: false`) because a stdio MCP server is
+# spawned eagerly at every client startup once registered, and Claude Code has
+# no enable/disable toggle for a registered server (`claude mcp --help` only
+# has add/remove/get/list) — so leaving them always-registered meant a plain
+# `claude` or `opencode` launched two Chrome windows for ANY session, not just
+# DAST work. This toggles both clients together, on demand, per clone.
+_DAST_WRAPPER="/media/sf_{{ plugins_share_name | default('AgenticPlugins') }}/rea-dast-plugin/scripts/launch_and_attach.sh"
+_DAST_ROSTER="playwright-attacker:attacker:9222 playwright-victim:victim:9223"
+
+_dast_opencode_json() { printf '%s' "$HOME/.config/opencode/opencode.json"; }
+
+_dast_set_opencode_enabled() { # _dast_set_opencode_enabled <true|false>
+  local val="$1" f; f="$(_dast_opencode_json)"
+  [ -f "$f" ] || { warn "opencode.json not found at $f - skipping opencode toggle"; return 0; }
+  command -v jq >/dev/null 2>&1 || die "jq is required but missing - rebuild golden (common role) and recreate this clone."
+  local tmp; tmp="$(mktemp)"
+  jq --argjson v "$val" '
+    (.mcp["playwright-attacker"] // empty) |= (.enabled = $v) |
+    (.mcp["playwright-victim"]   // empty) |= (.enabled = $v)
+  ' "$f" > "$tmp" && mv "$tmp" "$f"
+}
+
+mcp_dast_roster() {
+  local sub="${1:-status}"
+  case "$sub" in
+    on)
+      for entry in $_DAST_ROSTER; do
+        local name rest role port
+        name="${entry%%:*}"; rest="${entry#*:}"; role="${rest%%:*}"; port="${rest##*:}"
+        claude mcp remove --scope user "$name" >/dev/null 2>&1 || true
+        claude mcp add --scope user "$name" -- "$_DAST_WRAPPER" "$role" "$port"
+      done
+      _dast_set_opencode_enabled true
+      say "DAST roster ON (playwright-attacker/playwright-victim) for claude + opencode."
+      say "Starting claude or opencode now will launch two Chrome windows (one per role)." ;;
+    off)
+      for entry in $_DAST_ROSTER; do
+        local name="${entry%%:*}"
+        claude mcp remove --scope user "$name" >/dev/null 2>&1 || true
+      done
+      _dast_set_opencode_enabled false
+      say "DAST roster OFF. claude/opencode will no longer launch any extra browser." ;;
+    status)
+      say "Claude Code:"
+      for entry in $_DAST_ROSTER; do
+        local name="${entry%%:*}"
+        if claude mcp get "$name" >/dev/null 2>&1; then echo "  $name: registered (will launch on startup)"
+        else echo "  $name: not registered"; fi
+      done
+      say "opencode ($(_dast_opencode_json)):"
+      if command -v jq >/dev/null 2>&1 && [ -f "$(_dast_opencode_json)" ]; then
+        jq -r '.mcp["playwright-attacker"].enabled as $a | .mcp["playwright-victim"].enabled as $v |
+          "  playwright-attacker: enabled=\($a)\n  playwright-victim: enabled=\($v)"' "$(_dast_opencode_json)"
+      else
+        echo "  (jq or opencode.json unavailable)"
+      fi ;;
+    *) die "usage: cybervm mcp dast-roster on|off|status" ;;
+  esac
+}
+
 mcp_dispatch() {
   local sub="${1:-help}"; shift || true
   case "$sub" in
     status) mcp_status ;;
     verify) mcp_verify ;;
     update) mcp_update ;;
+    dast-roster) mcp_dast_roster "$@" ;;
     help|-h|--help) usage ;;
     *) err "unknown mcp command: $sub"; usage; exit 2 ;;
   esac

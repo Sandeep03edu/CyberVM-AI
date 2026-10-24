@@ -113,15 +113,33 @@
 # holds onboarding state, caches and experiment flags that must never be
 # overwritten by a template. The only safe path is the CLI, at user scope.
 # remove-then-add makes re-running the role idempotent.
-- name: Register local MCP servers with Claude Code (user scope)
+# Split into an unconditional remove + a conditional add (rather than one combined
+# remove-then-add) so a server with `default_enabled: false` (e.g. the DAST roster —
+# see config/mcp/servers.yml) is never left registered from a PRIOR provisioning of this
+# same disk, but also never gets `claude mcp add`-ed here in the first place: a stdio
+# server is spawned eagerly at every Claude Code startup once registered (no
+# enable/disable toggle exists for it — `claude mcp --help` only has add/remove/get/
+# list), so an unconditional add would launch its browser on every unrelated session.
+# Turn these on per clone with the guest-side `cybervm mcp dast-roster on|off|status`.
+- name: Deregister local MCP servers with Claude Code (idempotent, always — cleans up any prior registration)
   become: false
   shell:
-    cmd: >-
-      claude mcp remove --scope user {{ s.name }} >/dev/null 2>&1 || true;
-      claude mcp add --scope user {{ s.name }} -- {{ s.command }} {{ (s.args | default([])) | join(' ') }}
+    cmd: "claude mcp remove --scope user {{ s.name }} >/dev/null 2>&1 || true"
     executable: /bin/bash
   environment:
     HOME: "/home/{{ vm_user }}"
   loop: "{{ mcp_local }}"
   loop_control: { loop_var: s, label: "{{ s.name }}" }
+  changed_when: false
+
+- name: Register local MCP servers with Claude Code (user scope, default-enabled only)
+  become: false
+  shell:
+    cmd: "claude mcp add --scope user {{ s.name }} -- {{ s.command }} {{ (s.args | default([])) | join(' ') }}"
+    executable: /bin/bash
+  environment:
+    HOME: "/home/{{ vm_user }}"
+  loop: "{{ mcp_local }}"
+  loop_control: { loop_var: s, label: "{{ s.name }}" }
+  when: s.default_enabled | default(true)
   changed_when: true
